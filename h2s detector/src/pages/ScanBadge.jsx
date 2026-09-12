@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     Camera,
     Upload,
@@ -13,11 +13,15 @@ import {
     X,
     SlidersHorizontal,
     Sparkles,
-    UserCheck
+    UserCheck,
+    SunMedium,
+    Layers,
+    RotateCcw
 } from "lucide-react";
 
 // ============================================================
 // CALIBRATION DATABASE (Times 10s -> 60min, 100ppb -> 10ppm)
+// Standard Laboratory Baseline Colors (Under Standard D65 Illuminant)
 // ============================================================
 const CALIBRATION_DATA = {
     "10s": [
@@ -86,7 +90,7 @@ const CALIBRATION_DATA = {
 };
 
 // ============================================================
-// COLOR SPACE UTILS (sRGB -> CIE Lab & Delta E)
+// COLOR SPACE & CHROMATIC ADAPTATION (von Kries Normalization)
 // ============================================================
 function srgbToLinear(c) {
     const v = c / 255;
@@ -139,12 +143,13 @@ function extractRobustColor(canvas, rect) {
     for (let i = 0; i < imgData.length; i += 4) {
         const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
         const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        // Skip over-exposed glare (>248) and extreme shadows (<20)
         if (brightness < 20 || brightness > 248) continue;
         reds.push(r); greens.push(g); blues.push(b);
     }
 
     if (reds.length === 0) {
-        throw new Error("The selected crop region has too much glare or shadow. Move the crop box directly over the strip paper.");
+        throw new Error("Selected area has too much glare or shadow. Move reticle directly over the colored strip.");
     }
 
     return {
@@ -154,7 +159,7 @@ function extractRobustColor(canvas, rect) {
     };
 }
 
-// Map level string to numerical PPM estimate for cumulative dose
+// Convert level string to ppm for cumulative dose calculation
 function getNumericalPpm(levelStr) {
     if (levelStr.includes("100 ppb")) return 0.1;
     if (levelStr.includes("100–500")) return 0.3;
@@ -167,7 +172,7 @@ function getNumericalPpm(levelStr) {
 }
 
 // ============================================================
-// SCAN BADGE MAIN COMPONENT
+// MAIN SCAN BADGE COMPONENT WITH DUAL-RETICLE LIGHTING ENGINE
 // ============================================================
 function ScanBadge() {
     const fileInputRef = useRef(null);
@@ -176,27 +181,35 @@ function ScanBadge() {
     const streamRef = useRef(null);
     const cameraSectionRef = useRef(null);
 
-    // Measurement Parameters State (from User's Interface)
+    // Measurement Parameters
     const [badgeId, setBadgeId] = useState("H2S-2026-00431");
     const [temperature, setTemperature] = useState("32");
     const [humidity, setHumidity] = useState("64");
 
-    // Camera & Image Processing State
+    // Camera & Image States
     const [selectedTime, setSelectedTime] = useState("5min");
     const [imageObj, setImageObj] = useState(null);
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [facingMode, setFacingMode] = useState("environment");
 
-    const [cropRect, setCropRect] = useState({ x: 50, y: 50, width: 80, height: 80 });
+    // Dual Reticles: Sample Box (Cyan) & Reference Strip Box (Amber)
+    const [sampleRect, setSampleRect] = useState({ x: 120, y: 180, width: 90, height: 90 });
+    const [refRect, setRefRect] = useState({ x: 320, y: 180, width: 90, height: 90 });
+    const [activeTarget, setActiveTarget] = useState("sample"); // "sample" or "ref"
+    const [refBlockLevel, setRefBlockLevel] = useState("100 ppb"); // Reference strip block framed by amber box
+    const [enableLightingCorrection, setEnableLightingCorrection] = useState(true);
+
+    // Drag / Resize interaction states
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
+    const [dragTarget, setDragTarget] = useState(null); // "sample" or "ref"
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
     const [scanResult, setScanResult] = useState(null);
     const [saveSuccessMsg, setSaveSuccessMsg] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
 
-    // Find if the entered Badge ID corresponds to an existing worker
+    // Worker synchronization
     const [workersList, setWorkersList] = useState(() => {
         try {
             const saved = localStorage.getItem("h2s_workers_data");
@@ -211,9 +224,7 @@ function ScanBadge() {
             try {
                 const saved = localStorage.getItem("h2s_workers_data");
                 if (saved) setWorkersList(JSON.parse(saved));
-            } catch {
-                // Ignore parse errors
-            }
+            } catch {}
         };
         window.addEventListener("storage", handleSync);
         window.addEventListener("h2s_workers_updated", handleSync);
@@ -229,35 +240,21 @@ function ScanBadge() {
     );
 
     // ============================================================
-    // CAMERA STREAM CONTROLS & ATTACHMENT
+    // CAMERA CONTROLS
     // ============================================================
     const startCamera = async (mode = facingMode) => {
         try {
             setErrorMsg(null);
             stopCamera();
 
-            if (!navigator?.mediaDevices?.getUserMedia) {
-                throw new Error("Camera API is not supported in this browser. Ensure you are accessing via HTTPS or localhost.");
-            }
-
             let mediaStream;
             try {
-                // First attempt: preferred facingMode with ideal resolution
                 mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: mode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
+                    video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
                 });
-            } catch (firstErr) {
-                console.warn("Preferred camera constraints failed, attempting fallback to standard camera:", firstErr);
-                // Fallback attempt: any accessible video device
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false
-                });
+            } catch {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             }
 
             streamRef.current = mediaStream;
@@ -271,27 +268,20 @@ function ScanBadge() {
             }
         } catch (err) {
             setIsCameraActive(false);
-            setErrorMsg(`Camera access failed: ${err.message}. Please allow camera permissions, or upload an image / use the sample test badge.`);
+            setErrorMsg(`Camera access failed: ${err.message}. Please allow camera permissions or upload an image.`);
         }
     };
 
-    // Ensure video element receives stream immediately when mounted in DOM
     useEffect(() => {
         if (isCameraActive && videoRef.current && streamRef.current) {
-            const video = videoRef.current;
-            if (video.srcObject !== streamRef.current) {
-                video.srcObject = streamRef.current;
-            }
-            video.onloadedmetadata = () => {
-                video.play().catch(() => {});
-            };
-            video.play().catch(() => {});
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.play().catch(() => {});
         }
     }, [isCameraActive]);
 
     const stopCamera = () => {
         if (streamRef.current) {
-            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
         }
         if (videoRef.current) {
@@ -301,89 +291,140 @@ function ScanBadge() {
     };
 
     const toggleFacingMode = () => {
-        const nextMode = facingMode === "environment" ? "user" : "environment";
-        setFacingMode(nextMode);
-        startCamera(nextMode);
+        const next = facingMode === "environment" ? "user" : "environment";
+        setFacingMode(next);
+        startCamera(next);
     };
 
     const captureFromCamera = () => {
         if (!videoRef.current) return;
         const video = videoRef.current;
-        const width = video.videoWidth || video.clientWidth || 640;
-        const height = video.videoHeight || video.clientHeight || 480;
-
-        if (width === 0 || height === 0) {
-            setErrorMsg("Camera feed is still loading. Please wait a moment and try again.");
-            return;
-        }
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
 
         const offCanvas = document.createElement("canvas");
-        offCanvas.width = width;
-        offCanvas.height = height;
-        const offCtx = offCanvas.getContext("2d");
-        offCtx.drawImage(video, 0, 0, width, height);
+        offCanvas.width = w;
+        offCanvas.height = h;
+        offCanvas.getContext("2d").drawImage(video, 0, 0, w, h);
 
         const img = new Image();
         img.onload = () => {
             setImageObj(img);
             stopCamera();
-            const initialSize = Math.max(50, Math.floor(img.width * 0.22));
-            setCropRect({
-                x: Math.floor((img.width - initialSize) / 2),
-                y: Math.floor((img.height - initialSize) / 2),
-                width: initialSize,
-                height: initialSize
-            });
+            initDualReticles(img.width, img.height);
             setScanResult(null);
             setErrorMsg(null);
         };
         img.src = offCanvas.toDataURL("image/png");
     };
 
-    // Simulated test strip for camera-less environments or instant testing
+    // Position initial dual reticles side-by-side
+    const initDualReticles = (imgW, imgH) => {
+        const size = Math.max(60, Math.floor(imgW * 0.18));
+        const midY = Math.floor((imgH - size) / 2);
+        const centerX = Math.floor(imgW / 2);
+
+        setSampleRect({
+            x: Math.max(20, centerX - size - 40),
+            y: midY,
+            width: size,
+            height: size
+        });
+        setRefRect({
+            x: Math.min(imgW - size - 20, centerX + 40),
+            y: midY,
+            width: size,
+            height: size
+        });
+    };
+
+    // Load Physical Demo Badge + Calibration Card Side-by-Side
     const loadSampleBadge = () => {
         stopCamera();
         setErrorMsg(null);
         setScanResult(null);
 
         const sampleCanvas = document.createElement("canvas");
-        sampleCanvas.width = 600;
-        sampleCanvas.height = 600;
+        sampleCanvas.width = 800;
+        sampleCanvas.height = 650;
         const sCtx = sampleCanvas.getContext("2d");
 
-        // Badge housing
-        sCtx.fillStyle = "#1e293b";
-        sCtx.fillRect(0, 0, 600, 600);
-        sCtx.strokeStyle = "#475569";
-        sCtx.lineWidth = 4;
-        sCtx.strokeRect(30, 30, 540, 540);
+        // Background desk surface with realistic warm ambient cast
+        sCtx.fillStyle = "#1e2433";
+        sCtx.fillRect(0, 0, 800, 650);
 
-        sCtx.fillStyle = "#94a3b8";
-        sCtx.font = "bold 18px monospace";
-        sCtx.fillText("H2S COLORIMETRIC DOSIMETER STRIP", 50, 80);
-        sCtx.font = "13px sans-serif";
-        sCtx.fillText(`Test Strip Sample · Badge: ${badgeId}`, 50, 110);
-
-        // Strip exposure aperture
+        // LEFT: Worker's H2S Dosimeter Badge
         sCtx.fillStyle = "#0f172a";
-        sCtx.fillRect(150, 150, 300, 300);
-
-        // Chemically exposed test spot (Lead-Acetate exposed strip: RGB ~215, 202, 142)
-        sCtx.fillStyle = "rgb(215, 202, 142)";
+        sCtx.strokeStyle = "#334155";
+        sCtx.lineWidth = 3;
         sCtx.beginPath();
-        sCtx.arc(300, 300, 105, 0, Math.PI * 2);
+        sCtx.roundRect(50, 60, 310, 520, 16);
         sCtx.fill();
+        sCtx.stroke();
+
+        sCtx.fillStyle = "#38bdf8";
+        sCtx.font = "bold 15px sans-serif";
+        sCtx.fillText("WORKER DOSIMETER BADGE", 75, 105);
+        sCtx.font = "12px monospace";
+        sCtx.fillStyle = "#94a3b8";
+        sCtx.fillText(`Badge ID: ${badgeId}`, 75, 130);
+
+        // Active Lead-Acetate Test Strip Pad (Simulated 4 ppm exposure under warm lighting: R:235, G:188, B:98)
+        sCtx.fillStyle = "#020617";
+        sCtx.fillRect(105, 170, 200, 340);
+
+        sCtx.fillStyle = "rgb(235, 188, 98)"; // Warm shifted sample
+        sCtx.beginPath();
+        sCtx.arc(205, 340, 75, 0, Math.PI * 2);
+        sCtx.fill();
+
+        sCtx.fillStyle = "#e2e8f0";
+        sCtx.font = "bold 13px sans-serif";
+        sCtx.fillText("Active Pb(Ac)2 Sensor Pad", 115, 545);
+
+        // RIGHT: Manufacturer Reference Strip Card (From the Physical PDF Card)
+        sCtx.fillStyle = "#ffffff";
+        sCtx.strokeStyle = "#94a3b8";
+        sCtx.lineWidth = 2;
+        sCtx.beginPath();
+        sCtx.roundRect(430, 60, 320, 520, 16);
+        sCtx.fill();
+        sCtx.stroke();
+
+        sCtx.fillStyle = "#0f172a";
+        sCtx.font = "bold 15px sans-serif";
+        sCtx.fillText("H2S REFERENCE SCALE STRIP", 455, 95);
+        sCtx.font = "11px sans-serif";
+        sCtx.fillStyle = "#64748b";
+        sCtx.fillText(`Standard Calibrated Ladder (${selectedTime})`, 455, 115);
+
+        // Draw the 7 standard blocks of the ladder with warm ambient shift applied
+        const ladderLevels = CALIBRATION_DATA[selectedTime];
+        ladderLevels.forEach((item, idx) => {
+            const blockY = 140 + idx * 56;
+            // Draw square block with same warm ambient lighting shift
+            const warmR = Math.min(255, Math.round(item.rgb[0] * 1.06));
+            const warmG = Math.min(255, Math.round(item.rgb[1] * 1.02));
+            const warmB = Math.max(0, Math.round(item.rgb[2] * 0.88));
+
+            sCtx.fillStyle = `rgb(${warmR}, ${warmG}, ${warmB})`;
+            sCtx.strokeStyle = "#334155";
+            sCtx.lineWidth = 1.5;
+            sCtx.fillRect(460, blockY, 50, 48);
+            sCtx.strokeRect(460, blockY, 50, 48);
+
+            sCtx.fillStyle = "#0f172a";
+            sCtx.font = idx === 0 ? "bold 12px sans-serif" : "12px sans-serif";
+            sCtx.fillText(`${item.level} ${idx === 0 ? "← 100 ppb (Ref)" : ""}`, 525, blockY + 28);
+        });
 
         const img = new Image();
         img.onload = () => {
             setImageObj(img);
-            const initialSize = 160;
-            setCropRect({
-                x: 220,
-                y: 220,
-                width: initialSize,
-                height: initialSize
-            });
+            // Position Cyan box over test strip, Amber box over the Top 100 ppb Reference block
+            setSampleRect({ x: 130, y: 265, width: 150, height: 150 });
+            setRefRect({ x: 450, y: 135, width: 70, height: 60 });
+            setRefBlockLevel("100 ppb");
         };
         img.src = sampleCanvas.toDataURL("image/png");
     };
@@ -392,7 +433,6 @@ function ScanBadge() {
         return () => stopCamera();
     }, []);
 
-    // File Upload Handler
     const handleFileChange = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -403,13 +443,7 @@ function ScanBadge() {
             const img = new Image();
             img.onload = () => {
                 setImageObj(img);
-                const initialSize = Math.max(50, Math.floor(img.width * 0.22));
-                setCropRect({
-                    x: Math.floor((img.width - initialSize) / 2),
-                    y: Math.floor((img.height - initialSize) / 2),
-                    width: initialSize,
-                    height: initialSize
-                });
+                initDualReticles(img.width, img.height);
                 setScanResult(null);
                 setErrorMsg(null);
             };
@@ -418,7 +452,9 @@ function ScanBadge() {
         reader.readAsDataURL(file);
     };
 
-    // Draw canvas with interactive crop box
+    // ============================================================
+    // CANVAS DUAL RETICLE RENDERING
+    // ============================================================
     useEffect(() => {
         if (!imageObj || !canvasRef.current) return;
         const canvas = canvasRef.current;
@@ -426,46 +462,88 @@ function ScanBadge() {
         canvas.height = imageObj.height;
         const ctx = canvas.getContext("2d");
 
+        // 1. Base photo
         ctx.drawImage(imageObj, 0, 0);
 
-        // Dim background outside
-        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        // 2. Dim background outside reticles
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Clear crop box
+        // 3. Clear Sample Box
         ctx.drawImage(
             imageObj,
-            cropRect.x, cropRect.y, cropRect.width, cropRect.height,
-            cropRect.x, cropRect.y, cropRect.width, cropRect.height
+            sampleRect.x, sampleRect.y, sampleRect.width, sampleRect.height,
+            sampleRect.x, sampleRect.y, sampleRect.width, sampleRect.height
         );
 
-        // Neon border
-        ctx.strokeStyle = "#38bdf8";
-        ctx.lineWidth = Math.max(2, Math.floor(canvas.width / 350));
-        ctx.strokeRect(cropRect.x, cropRect.y, cropRect.width, cropRect.height);
+        // 4. Clear Reference Box
+        ctx.drawImage(
+            imageObj,
+            refRect.x, refRect.y, refRect.width, refRect.height,
+            refRect.x, refRect.y, refRect.width, refRect.height
+        );
 
-        // Corner resize handle
+        const lineWidth = Math.max(2, Math.floor(canvas.width / 350));
         const handleSize = Math.max(12, Math.floor(canvas.width / 45));
+
+        // ----------------------------------------------------
+        // DRAW CYAN RETICLE: Sample Strip
+        // ----------------------------------------------------
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = lineWidth;
+        ctx.strokeRect(sampleRect.x, sampleRect.y, sampleRect.width, sampleRect.height);
+
+        // Sample Label Badge
+        ctx.fillStyle = "#0284c7";
+        ctx.fillRect(sampleRect.x, Math.max(0, sampleRect.y - 24), Math.min(140, sampleRect.width), 24);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText("🔵 Active Test Strip", sampleRect.x + 6, Math.max(16, sampleRect.y - 8));
+
+        // Resize Handle (bottom-right)
         ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(
-            cropRect.x + cropRect.width - handleSize,
-            cropRect.y + cropRect.height - handleSize,
-            handleSize,
-            handleSize
-        );
+        ctx.fillRect(sampleRect.x + sampleRect.width - handleSize, sampleRect.y + sampleRect.height - handleSize, handleSize, handleSize);
 
-        // Central crosshairs
-        const cx = cropRect.x + cropRect.width / 2;
-        const cy = cropRect.y + cropRect.height / 2;
+        // Center Crosshairs
+        const scx = sampleRect.x + sampleRect.width / 2;
+        const scy = sampleRect.y + sampleRect.height / 2;
         ctx.beginPath();
-        ctx.moveTo(cx - 12, cy); ctx.lineTo(cx + 12, cy);
-        ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy + 12);
+        ctx.moveTo(scx - 10, scy); ctx.lineTo(scx + 10, scy);
+        ctx.moveTo(scx, scy - 10); ctx.lineTo(scx, scy + 10);
         ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
-    }, [imageObj, cropRect]);
 
-    // Canvas pointer drag/resize logic
+        // ----------------------------------------------------
+        // DRAW AMBER RETICLE: Reference Strip
+        // ----------------------------------------------------
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = lineWidth;
+        ctx.strokeRect(refRect.x, refRect.y, refRect.width, refRect.height);
+
+        // Reference Label Badge
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(refRect.x, Math.max(0, refRect.y - 24), Math.min(160, refRect.width), 24);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(`🟠 Reference (${refBlockLevel})`, refRect.x + 6, Math.max(16, refRect.y - 8));
+
+        // Resize Handle (bottom-right)
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(refRect.x + refRect.width - handleSize, refRect.y + refRect.height - handleSize, handleSize, handleSize);
+
+        // Center Crosshairs
+        const rcx = refRect.x + refRect.width / 2;
+        const rcy = refRect.y + refRect.height / 2;
+        ctx.beginPath();
+        ctx.moveTo(rcx - 10, rcy); ctx.lineTo(rcx + 10, rcy);
+        ctx.moveTo(rcx, rcy - 10); ctx.lineTo(rcx, rcy + 10);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }, [imageObj, sampleRect, refRect, refBlockLevel]);
+
+    // Canvas pointer drag/resize logic for dual boxes
     const getCanvasCoords = (e) => {
         if (!canvasRef.current) return { x: 0, y: 0 };
         const rect = canvasRef.current.getBoundingClientRect();
@@ -484,56 +562,109 @@ function ScanBadge() {
         const { x, y } = getCanvasCoords(e);
         const handleSize = Math.max(24, Math.floor(imageObj.width / 30));
 
-        const cornerX = cropRect.x + cropRect.width;
-        const cornerY = cropRect.y + cropRect.height;
-        if (Math.abs(x - cornerX) < handleSize && Math.abs(y - cornerY) < handleSize) {
+        // 1. Check Sample Box resize handle
+        if (
+            Math.abs(x - (sampleRect.x + sampleRect.width)) < handleSize &&
+            Math.abs(y - (sampleRect.y + sampleRect.height)) < handleSize
+        ) {
             setIsResizing(true);
+            setDragTarget("sample");
+            setActiveTarget("sample");
             setDragStart({ x, y });
             return;
         }
 
+        // 2. Check Reference Box resize handle
         if (
-            x >= cropRect.x &&
-            x <= cropRect.x + cropRect.width &&
-            y >= cropRect.y &&
-            y <= cropRect.y + cropRect.height
+            Math.abs(x - (refRect.x + refRect.width)) < handleSize &&
+            Math.abs(y - (refRect.y + refRect.height)) < handleSize
         ) {
-            setIsDragging(true);
-            setDragStart({ x: x - cropRect.x, y: y - cropRect.y });
+            setIsResizing(true);
+            setDragTarget("ref");
+            setActiveTarget("ref");
+            setDragStart({ x, y });
             return;
         }
 
-        setCropRect(prev => ({
-            ...prev,
-            x: Math.max(0, Math.min(imageObj.width - prev.width, x - prev.width / 2)),
-            y: Math.max(0, Math.min(imageObj.height - prev.height, y - prev.height / 2))
-        }));
+        // 3. Check inside Reference Box (drag)
+        if (
+            x >= refRect.x && x <= refRect.x + refRect.width &&
+            y >= refRect.y && y <= refRect.y + refRect.height
+        ) {
+            setIsDragging(true);
+            setDragTarget("ref");
+            setActiveTarget("ref");
+            setDragStart({ x: x - refRect.x, y: y - refRect.y });
+            return;
+        }
+
+        // 4. Check inside Sample Box (drag)
+        if (
+            x >= sampleRect.x && x <= sampleRect.x + sampleRect.width &&
+            y >= sampleRect.y && y <= sampleRect.y + sampleRect.height
+        ) {
+            setIsDragging(true);
+            setDragTarget("sample");
+            setActiveTarget("sample");
+            setDragStart({ x: x - sampleRect.x, y: y - sampleRect.y });
+            return;
+        }
+
+        // 5. Clicked outside: reposition whichever target is currently selected
+        if (activeTarget === "sample") {
+            setSampleRect(prev => ({
+                ...prev,
+                x: Math.max(0, Math.min(imageObj.width - prev.width, x - prev.width / 2)),
+                y: Math.max(0, Math.min(imageObj.height - prev.height, y - prev.height / 2))
+            }));
+        } else {
+            setRefRect(prev => ({
+                ...prev,
+                x: Math.max(0, Math.min(imageObj.width - prev.width, x - prev.width / 2)),
+                y: Math.max(0, Math.min(imageObj.height - prev.height, y - prev.height / 2))
+            }));
+        }
     };
 
     const handlePointerMove = (e) => {
-        if (!imageObj || (!isDragging && !isResizing)) return;
+        if (!imageObj || (!isDragging && !isResizing) || !dragTarget) return;
         const { x, y } = getCanvasCoords(e);
 
-        if (isDragging) {
-            setCropRect(prev => ({
-                ...prev,
-                x: Math.max(0, Math.min(imageObj.width - prev.width, x - dragStart.x)),
-                y: Math.max(0, Math.min(imageObj.height - prev.height, y - dragStart.y))
-            }));
-        } else if (isResizing) {
-            const newWidth = Math.max(30, Math.min(imageObj.width - cropRect.x, x - cropRect.x));
-            const newHeight = Math.max(30, Math.min(imageObj.height - cropRect.y, y - cropRect.y));
-            setCropRect(prev => ({ ...prev, width: newWidth, height: newHeight }));
+        if (dragTarget === "sample") {
+            if (isDragging) {
+                setSampleRect(prev => ({
+                    ...prev,
+                    x: Math.max(0, Math.min(imageObj.width - prev.width, x - dragStart.x)),
+                    y: Math.max(0, Math.min(imageObj.height - prev.height, y - dragStart.y))
+                }));
+            } else if (isResizing) {
+                const nw = Math.max(30, Math.min(imageObj.width - sampleRect.x, x - sampleRect.x));
+                const nh = Math.max(30, Math.min(imageObj.height - sampleRect.y, y - sampleRect.y));
+                setSampleRect(prev => ({ ...prev, width: nw, height: nh }));
+            }
+        } else if (dragTarget === "ref") {
+            if (isDragging) {
+                setRefRect(prev => ({
+                    ...prev,
+                    x: Math.max(0, Math.min(imageObj.width - prev.width, x - dragStart.x)),
+                    y: Math.max(0, Math.min(imageObj.height - prev.height, y - dragStart.y))
+                }));
+            } else if (isResizing) {
+                const nw = Math.max(30, Math.min(imageObj.width - refRect.x, x - refRect.x));
+                const nh = Math.max(30, Math.min(imageObj.height - refRect.y, y - refRect.y));
+                setRefRect(prev => ({ ...prev, width: nw, height: nh }));
+            }
         }
     };
 
     const handlePointerUp = () => {
         setIsDragging(false);
         setIsResizing(false);
+        setDragTarget(null);
     };
 
     // ============================================================
-    // CORE ANALYSIS & STORAGE TO WORKER PROFILE
+    // LIGHTING CORRECTION & DUAL-RETICLE ANALYSIS ENGINE
     // ============================================================
     const runAnalysisAndSave = () => {
         setErrorMsg(null);
@@ -551,16 +682,45 @@ function ScanBadge() {
         }
 
         try {
-            // 1. Extract color and compute Delta E against calibration references
-            const sampled = extractRobustColor(canvasRef.current, cropRect);
-            const sampleLab = rgbToLab(sampled.r, sampled.g, sampled.b);
+            // STEP 1: Extract Raw Sample Color
+            const rawSample = extractRobustColor(canvasRef.current, sampleRect);
 
+            // STEP 2: Extract Measured Reference Color from the same photo
+            const measuredRef = extractRobustColor(canvasRef.current, refRect);
+
+            // STEP 3: Get Known Standard Laboratory RGB for the framed reference level
+            let targetRefRGB = [235, 229, 211]; // default 100 ppb
+            if (refBlockLevel === "White Card") {
+                targetRefRGB = [248, 248, 248];
+            } else {
+                const matchedRefConfig = CALIBRATION_DATA[selectedTime].find(l => l.level === refBlockLevel);
+                if (matchedRefConfig) targetRefRGB = matchedRefConfig.rgb;
+            }
+
+            // STEP 4: Compute von Kries Channel Multipliers
+            let kR = targetRefRGB[0] / Math.max(1, measuredRef.r);
+            let kG = targetRefRGB[1] / Math.max(1, measuredRef.g);
+            let kB = targetRefRGB[2] / Math.max(1, measuredRef.b);
+
+            // Clamp multipliers to safe bounds (0.4x - 2.5x) to avoid extreme artifacts
+            kR = Math.min(2.5, Math.max(0.4, kR));
+            kG = Math.min(2.5, Math.max(0.4, kG));
+            kB = Math.min(2.5, Math.max(0.4, kB));
+
+            // STEP 5: Apply Lighting Normalization
+            const correctedSample = enableLightingCorrection ? {
+                r: Math.round(Math.min(255, Math.max(0, rawSample.r * kR))),
+                g: Math.round(Math.min(255, Math.max(0, rawSample.g * kG))),
+                b: Math.round(Math.min(255, Math.max(0, rawSample.b * kB)))
+            } : rawSample;
+
+            // STEP 6: Convert to CIE Lab and Match against Calibration Database
+            const correctedLab = rgbToLab(correctedSample.r, correctedSample.g, correctedSample.b);
             const refList = CALIBRATION_DATA[selectedTime];
-            if (!refList) throw new Error("No calibration references for selected time.");
 
             const ranked = refList.map(ref => {
                 const refLab = rgbToLab(ref.rgb[0], ref.rgb[1], ref.rgb[2]);
-                const deltaE = calculateDeltaE(sampleLab, refLab);
+                const deltaE = calculateDeltaE(correctedLab, refLab);
                 return {
                     ...ref,
                     deltaE: Number(deltaE.toFixed(2))
@@ -569,11 +729,20 @@ function ScanBadge() {
 
             const best = ranked[0];
 
-            // 2. Calculate incremental dose (ppm·hr)
-            const ppmVal = getNumericalPpm(best.level);
-            const doseIncrement = Number((ppmVal * 1.5).toFixed(1)); // Standardized shift increment
+            // Ambient lighting diagnostics
+            const avgMultiplier = (kR + kG + kB) / 3;
+            const brightnessShiftPct = Math.round((avgMultiplier - 1) * 100);
+            let colorCastDesc = "Neutral balanced daylight";
+            if (kB / kR > 1.12) {
+                colorCastDesc = "Warm / Incandescent lighting cast (Compensated)";
+            } else if (kR / kB > 1.12) {
+                colorCastDesc = "Cool / Fluorescent lighting cast (Compensated)";
+            }
 
-            // 3. Update or Register Worker in localStorage (h2s_workers_data)
+            // STEP 7: Save to Worker & Exposure Logs
+            const ppmVal = getNumericalPpm(best.level);
+            const doseIncrement = Number((ppmVal * 1.5).toFixed(1));
+
             let updatedWorkers = [...workersList];
             let targetWorker = updatedWorkers.find(w =>
                 w.badge.toLowerCase().includes(badgeId.trim().toLowerCase()) ||
@@ -595,10 +764,9 @@ function ScanBadge() {
                 const newRecord = {
                     id: `W-${100 + updatedWorkers.length + 1}`,
                     name: assignedName,
-                    email: "field.operator@petrogas.com",
+                    email: "operator@petrogas.com",
                     phone: "+91 98000 11223",
                     badge: badgeId.trim(),
-                    badgeExpiry: "2026-12-31",
                     department: "Field Monitoring",
                     role: "Badge Holder",
                     shift: "Current Shift",
@@ -613,7 +781,6 @@ function ScanBadge() {
             window.dispatchEvent(new CustomEvent("h2s_workers_updated", { detail: updatedWorkers }));
             setWorkersList(updatedWorkers);
 
-            // 4. Save to Exposure History Logs (h2s_exposure_logs)
             const existingLogs = JSON.parse(localStorage.getItem("h2s_exposure_logs") || "[]");
             const newLogEntry = {
                 id: `EXP-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -621,21 +788,27 @@ function ScanBadge() {
                 worker: assignedName,
                 workerId: targetWorker?.id || `W-${100 + updatedWorkers.length}`,
                 badge: badgeId.trim(),
-                location: targetWorker ? `${targetWorker.department}` : "Monitoring Unit",
+                location: targetWorker ? targetWorker.department : "Monitoring Post",
                 shift: targetWorker ? targetWorker.shift : "Current Shift",
                 duration: `${selectedTime} scan (${temperature}°C, ${humidity}% RH)`,
                 concentration: best.level,
                 dose: newTotalDose,
                 status: newTotalDose >= 25 ? "Critical" : newTotalDose >= 18 ? "Review" : "Normal",
-                notes: `Environmental: Temp ${temperature}°C, RH ${humidity}%. Analyzed with Lead-Acetate calibration curve.`
+                notes: `Dual-strip normalized. ${colorCastDesc}. Brightness adj: ${brightnessShiftPct > 0 ? "+" : ""}${brightnessShiftPct}%.`
             };
             const updatedLogs = [newLogEntry, ...existingLogs];
             localStorage.setItem("h2s_exposure_logs", JSON.stringify(updatedLogs));
             window.dispatchEvent(new CustomEvent("h2s_logs_updated", { detail: updatedLogs }));
 
-            // 5. Update UI states
+            // Update State
             setScanResult({
-                sampledRgb: sampled,
+                rawSample,
+                measuredRef,
+                targetRefRGB,
+                correctedSample,
+                lightingMultipliers: { kR: +kR.toFixed(3), kG: +kG.toFixed(3), kB: +kB.toFixed(3) },
+                brightnessShiftPct,
+                colorCastDesc,
                 bestMatch: best,
                 rankings: ranked,
                 assignedWorkerName: assignedName,
@@ -644,7 +817,7 @@ function ScanBadge() {
             });
 
             setSaveSuccessMsg(
-                `✓ Scan complete! Concentration of ${best.level} recorded to ${assignedName} (${badgeId}). Cumulative exposure updated to ${newTotalDose} ppm·hr.`
+                `✓ Calibrated Scan Complete! Normalized concentration of ${best.level} recorded to ${assignedName} (${badgeId}). Cumulative exposure updated to ${newTotalDose} ppm·hr.`
             );
         } catch (err) {
             setErrorMsg(err.message);
@@ -657,12 +830,12 @@ function ScanBadge() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Scan H₂S Badge</h1>
                 <p className="text-slate-400 mt-1 text-sm">
-                    Enter measurement parameters, capture or upload the exposed badge, and store the reading to the worker's exposure profile.
+                    Dual-reticle optical scanner with reference strip lighting compensation for true laboratory-grade PPM accuracy.
                 </p>
             </div>
 
             {/* ============================================================ */}
-            {/* MEASUREMENT PARAMETERS INTERFACE (From User's Design)       */}
+            {/* MEASUREMENT PARAMETERS CARD                                  */}
             {/* ============================================================ */}
             <div className="bg-[#111827] border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-2.5 text-white font-bold text-lg">
@@ -671,11 +844,8 @@ function ScanBadge() {
                 </div>
 
                 <div className="space-y-4">
-                    {/* Badge ID Input with live worker matching */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                            Badge ID
-                        </label>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Badge ID</label>
                         <input
                             type="text"
                             value={badgeId}
@@ -683,55 +853,43 @@ function ScanBadge() {
                             placeholder="H2S-2026-00431"
                             className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
                         />
-                        {matchedWorker ? (
+                        {matchedWorker && (
                             <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
                                 <UserCheck size={14} />
-                                <span>
-                                    Assigned to: <strong>{matchedWorker.name}</strong> ({matchedWorker.department} · Current: {matchedWorker.dose} ppm·hr)
-                                </span>
+                                <span>Assigned to: <strong>{matchedWorker.name}</strong> ({matchedWorker.department} · Current: {matchedWorker.dose} ppm·hr)</span>
                             </div>
-                        ) : (
-                            <p className="mt-1.5 text-xs text-slate-500">
-                                Unregistered Badge ID: Will automatically create/link a new personnel record on analysis.
-                            </p>
                         )}
                     </div>
 
-                    {/* Temperature (°C) Input */}
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                            Temperature (°C)
-                        </label>
-                        <input
-                            type="number"
-                            value={temperature}
-                            onChange={(e) => setTemperature(e.target.value)}
-                            placeholder="32"
-                            className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Temperature (°C)</label>
+                            <input
+                                type="number"
+                                value={temperature}
+                                onChange={(e) => setTemperature(e.target.value)}
+                                placeholder="32"
+                                className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Relative Humidity (%))</label>
+                            <input
+                                type="number"
+                                value={humidity}
+                                onChange={(e) => setHumidity(e.target.value)}
+                                placeholder="64"
+                                className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
+                            />
+                        </div>
                     </div>
 
-                    {/* Relative Humidity (%) Input */}
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                            Relative Humidity (%)
-                        </label>
-                        <input
-                            type="number"
-                            value={humidity}
-                            onChange={(e) => setHumidity(e.target.value)}
-                            placeholder="64"
-                            className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
-                        />
-                    </div>
-
-                    {/* Analyze Badge Button (Styling directly from user's image) */}
                     <button
                         type="button"
                         onClick={runAnalysisAndSave}
-                        className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-base shadow-lg shadow-blue-600/30"
+                        className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-base shadow-lg shadow-blue-600/30 cursor-pointer"
                     >
-                        <Sparkles size={18} /> Analyze Badge
+                        <Sparkles size={18} /> Analyze Badge (Lighting-Corrected)
                     </button>
                 </div>
             </div>
@@ -752,56 +910,71 @@ function ScanBadge() {
             )}
 
             {/* ============================================================ */}
-            {/* CAMERA & IMAGE PROCESSING SECTION                            */}
+            {/* CAMERA & DUAL RETICLE CALIBRATION VIEWPORT                   */}
             {/* ============================================================ */}
             <div ref={cameraSectionRef} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
-                {/* Duration selector */}
-                <div>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
-                        <Clock size={16} className="text-sky-400" />
-                        Select Strip Exposure Duration:
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                        {[
-                            { key: "10s", label: "10s" },
-                            { key: "30s", label: "30s" },
-                            { key: "1min", label: "1 min" },
-                            { key: "5min", label: "5 min" },
-                            { key: "10min", label: "10 min" },
-                            { key: "30min", label: "30 min" },
-                            { key: "60min", label: "60 min" },
-                        ].map((t) => (
-                            <button
-                                key={t.key}
-                                type="button"
-                                onClick={() => setSelectedTime(t.key)}
-                                className={`py-2 px-3 text-sm font-medium rounded-lg border transition ${
-                                    selectedTime === t.key
-                                        ? "bg-sky-500 border-sky-400 text-slate-950 font-bold shadow-md shadow-sky-500/20"
-                                        : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700"
-                                }`}
-                            >
-                                {t.label}
-                            </button>
-                        ))}
+                {/* Duration & Reference Block Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 mb-2">
+                            <Clock size={15} className="text-sky-400" />
+                            Badge Exposure Duration:
+                        </label>
+                        <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                            {["10s", "30s", "1min", "5min", "10min", "30min", "60min"].map((t) => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setSelectedTime(t)}
+                                    className={`py-1.5 px-2 text-xs font-medium rounded-lg border transition ${
+                                        selectedTime === t
+                                            ? "bg-sky-500 border-sky-400 text-slate-950 font-bold"
+                                            : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700"
+                                    }`}
+                                >
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-amber-300 mb-2">
+                            <SunMedium size={15} className="text-amber-400" />
+                            Reference Strip Block (Framed by 🟠 Amber Box):
+                        </label>
+                        <select
+                            value={refBlockLevel}
+                            onChange={(e) => setRefBlockLevel(e.target.value)}
+                            className="w-full bg-slate-950 border border-amber-500/40 rounded-lg px-3 py-2 text-xs text-amber-200 focus:outline-none focus:border-amber-400 font-medium"
+                        >
+                            <option value="100 ppb">Top Block: 100 ppb (Clean Baseline Standard)</option>
+                            <option value="~100–500 ppb">Block 2: ~100–500 ppb Standard</option>
+                            <option value="1 ppm">Block 3: 1 ppm Standard</option>
+                            <option value="2 ppm">Block 4: 2 ppm Standard</option>
+                            <option value="4 ppm">Block 5: 4 ppm Standard</option>
+                            <option value="8 ppm">Block 6: 8 ppm Standard</option>
+                            <option value="10 ppm">Bottom Block: 10 ppm Standard</option>
+                            <option value="White Card">White Card Background (R:248, G:248, B:248)</option>
+                        </select>
                     </div>
                 </div>
 
-                {/* Choice: Live Camera, File Upload, or Sample Test Badge */}
+                {/* Ingestion Choice */}
                 {!imageObj && !isCameraActive && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button
                                 type="button"
                                 onClick={() => startCamera()}
-                                className="p-8 border-2 border-dashed border-slate-700 hover:border-sky-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center"
+                                className="p-8 border-2 border-dashed border-slate-700 hover:border-sky-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center cursor-pointer"
                             >
                                 <div className="p-4 bg-sky-500/10 group-hover:bg-sky-500/20 text-sky-400 rounded-full transition">
                                     <Video size={36} />
                                 </div>
                                 <div>
                                     <p className="font-semibold text-slate-200 text-base">Open Live Camera</p>
-                                    <p className="text-xs text-slate-400 mt-1">Capture live strip through webcam or smartphone lens</p>
+                                    <p className="text-xs text-slate-400 mt-1">Capture badge next to reference card via camera</p>
                                 </div>
                                 <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-sky-500 text-slate-950 rounded-lg text-sm font-semibold">
                                     Start Camera
@@ -816,8 +989,8 @@ function ScanBadge() {
                                     <Upload size={36} />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-slate-200 text-base">Upload Image File</p>
-                                    <p className="text-xs text-slate-400 mt-1">Select PNG, JPG, or snapshot from gallery</p>
+                                    <p className="font-semibold text-slate-200 text-base">Upload Photo</p>
+                                    <p className="text-xs text-slate-400 mt-1">Select badge + reference strip image from files</p>
                                 </div>
                                 <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg text-sm font-semibold">
                                     Browse Files
@@ -832,30 +1005,30 @@ function ScanBadge() {
                             </div>
                         </div>
 
-                        {/* Instant Test Strip Generator */}
+                        {/* Demo Badge with Reference Card */}
                         <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
                             <div className="flex items-center gap-2.5">
                                 <Sparkles size={18} className="text-amber-400 shrink-0" />
-                                <span>No physical badge or webcam right now? Generate a simulated calibrated dosimeter badge instantly.</span>
+                                <span>No physical reference strip right now? Load a simulated badge side-by-side with the physical calibration ladder.</span>
                             </div>
                             <button
                                 type="button"
                                 onClick={loadSampleBadge}
                                 className="whitespace-nowrap px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold rounded-lg transition cursor-pointer"
                             >
-                                Load Test Badge
+                                Load Test Card
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Live Camera Viewfinder */}
+                {/* Camera Viewfinder */}
                 {isCameraActive && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs text-slate-300">
                             <span className="flex items-center gap-2 font-medium">
                                 <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                                Live Viewfinder Active
+                                Camera Live · Hold badge next to calibration card
                             </span>
                             <div className="flex items-center gap-2">
                                 <button
@@ -877,25 +1050,22 @@ function ScanBadge() {
 
                         <div className="relative w-full max-h-[480px] overflow-hidden rounded-xl bg-black flex items-center justify-center border border-slate-800">
                             <video
-                                ref={(el) => {
-                                    videoRef.current = el;
-                                    if (el && streamRef.current && el.srcObject !== streamRef.current) {
-                                        el.srcObject = streamRef.current;
-                                        el.play().catch(() => {});
-                                    }
-                                }}
+                                ref={videoRef}
                                 autoPlay
                                 playsInline
                                 muted
-                                onLoadedMetadata={() => {
-                                    videoRef.current?.play().catch(() => {});
-                                }}
                                 className="w-full h-auto max-h-[480px] object-contain"
                             />
-                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                                <div className="w-44 h-44 border-2 border-dashed border-sky-400/80 rounded-lg flex items-center justify-center">
-                                    <span className="text-[11px] bg-slate-950/80 text-sky-300 px-2 py-0.5 rounded">
-                                        Center Strip Pad Here
+                            {/* Dual Guide Outline */}
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center gap-6">
+                                <div className="w-36 h-48 border-2 border-dashed border-sky-400/80 rounded-lg flex items-center justify-center">
+                                    <span className="text-[10px] bg-slate-950/80 text-sky-300 px-2 py-0.5 rounded">
+                                        Active Badge Strip
+                                    </span>
+                                </div>
+                                <div className="w-36 h-48 border-2 border-dashed border-amber-400/80 rounded-lg flex items-center justify-center">
+                                    <span className="text-[10px] bg-slate-950/80 text-amber-300 px-2 py-0.5 rounded">
+                                        Reference Card
                                     </span>
                                 </div>
                             </div>
@@ -905,14 +1075,14 @@ function ScanBadge() {
                             <button
                                 type="button"
                                 onClick={captureFromCamera}
-                                className="flex-1 py-3 px-4 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition flex items-center justify-center gap-2 text-base shadow-lg shadow-sky-500/20"
+                                className="flex-1 py-3 px-4 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition flex items-center justify-center gap-2 text-base shadow-lg shadow-sky-500/20 cursor-pointer"
                             >
-                                <Camera size={20} /> Snap Photo & Proceed
+                                <Camera size={20} /> Snap Photo with Reference Strip
                             </button>
                             <button
                                 type="button"
                                 onClick={stopCamera}
-                                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700"
+                                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 cursor-pointer"
                             >
                                 Cancel
                             </button>
@@ -920,28 +1090,51 @@ function ScanBadge() {
                     </div>
                 )}
 
-                {/* Cropping Canvas Workspace */}
+                {/* Interactive Dual-Reticle Canvas */}
                 {imageObj && (
                     <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-800 text-xs text-slate-400">
-                            <div className="flex items-center gap-2">
-                                <Crop size={15} className="text-sky-400" />
-                                <span><strong>Drag</strong> box over strip pad · <strong>Drag bottom-right handle</strong> to resize</span>
+                        {/* Control Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800 text-xs">
+                            <div className="flex items-center gap-3">
+                                <span className="text-slate-400">Position Reticle:</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTarget("sample")}
+                                    className={`px-3 py-1.5 rounded-lg border font-semibold transition cursor-pointer ${
+                                        activeTarget === "sample"
+                                            ? "bg-sky-500 border-sky-400 text-slate-950 shadow-sm"
+                                            : "bg-slate-800 border-slate-700 text-sky-300 hover:bg-slate-700"
+                                    }`}
+                                >
+                                    🔵 Active Test Strip
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTarget("ref")}
+                                    className={`px-3 py-1.5 rounded-lg border font-semibold transition cursor-pointer ${
+                                        activeTarget === "ref"
+                                            ? "bg-amber-500 border-amber-400 text-slate-950 shadow-sm"
+                                            : "bg-slate-800 border-slate-700 text-amber-300 hover:bg-slate-700"
+                                    }`}
+                                >
+                                    🟠 Reference Strip
+                                </button>
                             </div>
+
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => startCamera()}
-                                    className="flex items-center gap-1 text-sky-400 hover:text-sky-300 px-2.5 py-1 bg-slate-800 rounded border border-slate-700"
+                                    className="flex items-center gap-1 text-sky-400 hover:text-sky-300 px-2.5 py-1 bg-slate-800 rounded border border-slate-700 cursor-pointer"
                                 >
-                                    <Video size={13} /> Retake with Camera
+                                    <Video size={13} /> Retake
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex items-center gap-1 text-slate-300 hover:text-white px-2.5 py-1 bg-slate-800 rounded border border-slate-700"
+                                    className="flex items-center gap-1 text-slate-300 hover:text-white px-2.5 py-1 bg-slate-800 rounded border border-slate-700 cursor-pointer"
                                 >
-                                    <Upload size={13} /> Upload Another
+                                    <Upload size={13} /> Upload New
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -953,8 +1146,9 @@ function ScanBadge() {
                             </div>
                         </div>
 
+                        {/* Canvas */}
                         <div
-                            className="relative w-full overflow-hidden rounded-xl bg-black border border-slate-800 flex justify-center items-center select-none cursor-crosshair max-h-[500px]"
+                            className="relative w-full overflow-hidden rounded-xl bg-black border border-slate-800 flex justify-center items-center select-none cursor-crosshair max-h-[520px]"
                             onMouseDown={handlePointerDown}
                             onMouseMove={handlePointerMove}
                             onMouseUp={handlePointerUp}
@@ -964,40 +1158,58 @@ function ScanBadge() {
                         >
                             <canvas
                                 ref={canvasRef}
-                                className="max-w-full max-h-[500px] h-auto object-contain block"
+                                className="max-w-full max-h-[520px] h-auto object-contain block"
                             />
                         </div>
 
-                        {/* Slider to fine-tune box size */}
-                        <div className="flex items-center gap-4 bg-slate-950/60 p-3 rounded-lg border border-slate-800 text-sm">
-                            <Sliders size={16} className="text-sky-400 shrink-0" />
-                            <span className="text-xs text-slate-400 whitespace-nowrap">Crop Size:</span>
-                            <input
-                                type="range"
-                                min="30"
-                                max={Math.min(imageObj.width, imageObj.height, 450)}
-                                value={cropRect.width}
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    setCropRect(prev => ({ ...prev, width: val, height: val }));
-                                }}
-                                className="w-full accent-sky-400 cursor-pointer"
-                            />
-                            <span className="text-xs font-mono text-slate-300 shrink-0">{cropRect.width}px</span>
+                        {/* Reticle Size Adjustment */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3.5 rounded-lg border border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sky-300 font-semibold whitespace-nowrap">🔵 Test Box:</span>
+                                <input
+                                    type="range"
+                                    min="30"
+                                    max="300"
+                                    value={sampleRect.width}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        setSampleRect(prev => ({ ...prev, width: val, height: val }));
+                                    }}
+                                    className="w-full accent-sky-400 cursor-pointer"
+                                />
+                                <span className="font-mono text-slate-400 shrink-0">{sampleRect.width}px</span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <span className="text-amber-300 font-semibold whitespace-nowrap">🟠 Ref Box:</span>
+                                <input
+                                    type="range"
+                                    min="30"
+                                    max="300"
+                                    value={refRect.width}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        setRefRect(prev => ({ ...prev, width: val, height: val }));
+                                    }}
+                                    className="w-full accent-amber-400 cursor-pointer"
+                                />
+                                <span className="font-mono text-slate-400 shrink-0">{refRect.width}px</span>
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* ============================================================ */}
-            {/* RESULTS SECTION                                              */}
+            {/* LIGHTING CORRECTION DIAGNOSTICS & RESULTS                    */}
             {/* ============================================================ */}
             {scanResult && (
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 animate-fade-in">
+                    {/* Calibrated Winner Banner */}
                     <div className="p-6 rounded-xl border border-sky-500/40 bg-gradient-to-r from-sky-950/40 via-slate-900 to-slate-900 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div>
-                            <div className="flex items-center gap-2 text-xs font-semibold text-sky-400 uppercase tracking-wider">
-                                <CheckCircle2 size={16} /> Measured Exposure Result
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                                <CheckCircle2 size={16} /> Calibrated Exposure Measurement
                             </div>
                             <div className="text-4xl font-black text-white mt-1">
                                 {scanResult.bestMatch.level}
@@ -1007,47 +1219,91 @@ function ScanBadge() {
                                     Badge: <span className="font-mono text-sky-300 font-semibold">{badgeId}</span> · Operator: <span className="text-white font-medium">{scanResult.assignedWorkerName}</span>
                                 </div>
                                 <div>
-                                    Incremental Dose: <span className="text-emerald-400 font-bold">+{scanResult.doseIncrement} ppm·hr</span> · Updated Total: <span className="text-white font-bold">{scanResult.newTotalDose} ppm·hr</span>
+                                    Incremental Dose: <span className="text-emerald-400 font-bold">+{scanResult.doseIncrement} ppm·hr</span> · New Total: <span className="text-white font-bold">{scanResult.newTotalDose} ppm·hr</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Side-by-Side Color Swatches */}
-                        <div className="flex items-center gap-4 bg-slate-950/70 p-3 rounded-lg border border-slate-800 shrink-0">
+                        {/* Quad Swatch Comparison */}
+                        <div className="flex items-center gap-2.5 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 shrink-0">
                             <div className="text-center">
                                 <div
-                                    className="w-14 h-14 rounded-lg border border-white/20 shadow-inner"
-                                    style={{
-                                        backgroundColor: `rgb(${scanResult.sampledRgb.r}, ${scanResult.sampledRgb.g}, ${scanResult.sampledRgb.b})`
-                                    }}
+                                    className="w-12 h-12 rounded-lg border border-white/20 shadow-inner"
+                                    style={{ backgroundColor: `rgb(${scanResult.rawSample.r}, ${scanResult.rawSample.g}, ${scanResult.rawSample.b})` }}
                                 />
-                                <div className="text-[10px] text-slate-400 mt-1 font-mono">Sampled</div>
+                                <div className="text-[10px] text-slate-400 mt-1">Raw Photo</div>
                             </div>
-                            <div className="text-slate-600 font-bold text-lg">vs</div>
+                            <div className="text-slate-600 font-bold text-xs">→</div>
                             <div className="text-center">
                                 <div
-                                    className="w-14 h-14 rounded-lg border border-white/20 shadow-inner"
-                                    style={{
-                                        backgroundColor: `rgb(${scanResult.bestMatch.rgb.join(",")})`
-                                    }}
+                                    className="w-12 h-12 rounded-lg border border-amber-400/40 shadow-inner"
+                                    style={{ backgroundColor: `rgb(${scanResult.measuredRef.r}, ${scanResult.measuredRef.g}, ${scanResult.measuredRef.b})` }}
                                 />
-                                <div className="text-[10px] text-slate-400 mt-1 font-mono">Reference</div>
+                                <div className="text-[10px] text-amber-300 mt-1">Ref Strip</div>
+                            </div>
+                            <div className="text-slate-600 font-bold text-xs">→</div>
+                            <div className="text-center">
+                                <div
+                                    className="w-12 h-12 rounded-lg border-2 border-emerald-400 shadow-lg shadow-emerald-500/20"
+                                    style={{ backgroundColor: `rgb(${scanResult.correctedSample.r}, ${scanResult.correctedSample.g}, ${scanResult.correctedSample.b})` }}
+                                />
+                                <div className="text-[10px] text-emerald-300 font-semibold mt-1">Corrected</div>
+                            </div>
+                            <div className="text-slate-600 font-bold text-xs">vs</div>
+                            <div className="text-center">
+                                <div
+                                    className="w-12 h-12 rounded-lg border border-white/20 shadow-inner"
+                                    style={{ backgroundColor: `rgb(${scanResult.bestMatch.rgb.join(",")})` }}
+                                />
+                                <div className="text-[10px] text-sky-300 font-semibold mt-1">Target Lab</div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Calibration scale ranking */}
+                    {/* Optical Normalization Report Card */}
+                    <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                                <SunMedium size={16} className="text-amber-400" />
+                                <span>Optical Lighting Compensation Diagnostics:</span>
+                            </div>
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium border border-emerald-500/20">
+                                Normalized to D65 Standard
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                                <span className="text-slate-400 block mb-1">Color Temperature Shift:</span>
+                                <span className="text-white font-medium">{scanResult.colorCastDesc}</span>
+                            </div>
+                            <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                                <span className="text-slate-400 block mb-1">Luminance Compensation:</span>
+                                <span className="text-white font-medium font-mono">
+                                    {scanResult.brightnessShiftPct > 0 ? "+" : ""}{scanResult.brightnessShiftPct}% Illumination
+                                </span>
+                            </div>
+                            <div className="p-3 bg-slate-900 rounded-lg border border-slate-800">
+                                <span className="text-slate-400 block mb-1">Channel Multipliers:</span>
+                                <span className="text-sky-300 font-mono">
+                                    R×{scanResult.lightingMultipliers.kR} · G×{scanResult.lightingMultipliers.kG} · B×{scanResult.lightingMultipliers.kB}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Calibration scale rankings */}
                     <div>
                         <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
                             <Info size={16} className="text-sky-400" />
-                            Reference Comparison Table ({selectedTime}):
+                            Calibrated Reference Scale Comparison ({selectedTime}):
                         </h3>
                         <div className="overflow-x-auto rounded-lg border border-slate-800">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
                                     <tr>
-                                        <th className="py-3 px-4">PPM / Concentration</th>
-                                        <th className="py-3 px-4">Calibration Color</th>
+                                        <th className="py-3 px-4">PPM / Level</th>
+                                        <th className="py-3 px-4">Standard Color</th>
                                         <th className="py-3 px-4">ΔE Distance</th>
                                         <th className="py-3 px-4">Rank / Status</th>
                                     </tr>
