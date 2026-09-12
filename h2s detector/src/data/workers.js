@@ -1,119 +1,21 @@
 // Centralized workers, badges, and exposure data helpers
 
-export const INITIAL_WORKERS = [
-    {
-        id: "W-101",
-        name: "Ravi Kumar",
-        email: "ravi.kumar@petrogas.com",
-        phone: "+91 98451 22341",
-        badge: "H2S-00431",
-        badgeExpiry: "2026-11-30", // Active (> 30 days)
-        department: "Refining Unit B",
-        role: "Senior Plant Operator",
-        shift: "Morning",
-        dose: 14.3,
-        status: "Normal",
-        lastScan: "Today, 10:30 AM"
-    },
-    {
-        id: "W-102",
-        name: "Arjun Rao",
-        email: "arjun.rao@petrogas.com",
-        phone: "+91 97120 44512",
-        badge: "H2S-00432",
-        badgeExpiry: "2026-10-15", // Active (expiring in ~33 days)
-        department: "Sulfur Recovery Unit",
-        role: "Field Technician",
-        shift: "Night",
-        dose: 21.7,
-        status: "Review",
-        lastScan: "Today, 06:15 AM"
-    },
-    {
-        id: "W-103",
-        name: "Rahul Singh",
-        email: "rahul.singh@petrogas.com",
-        phone: "+91 94560 88712",
-        badge: "H2S-00433",
-        badgeExpiry: "2026-12-05", // Active
-        department: "Pipeline Maintenance",
-        role: "Maintenance Engineer",
-        shift: "Morning",
-        dose: 6.2,
-        status: "Normal",
-        lastScan: "Yesterday, 04:45 PM"
-    },
-    {
-        id: "W-104",
-        name: "Vikram Patel",
-        email: "vikram.patel@petrogas.com",
-        phone: "+91 98230 11904",
-        badge: "H2S-00434",
-        badgeExpiry: "2026-09-28", // Active - Expiring Soon (16 days)
-        department: "Drilling Platform 4",
-        role: "Drilling Specialist",
-        shift: "Evening",
-        dose: 18.5,
-        status: "Review",
-        lastScan: "Today, 02:20 PM"
-    },
-    {
-        id: "W-105",
-        name: "Priya Sharma",
-        email: "priya.sharma@petrogas.com",
-        phone: "+91 99120 77341",
-        badge: "H2S-00435",
-        badgeExpiry: "2027-01-15", // Active
-        department: "Chemical Analysis Lab",
-        role: "Lab Chemist",
-        shift: "Morning",
-        dose: 3.1,
-        status: "Normal",
-        lastScan: "Today, 11:00 AM"
-    },
-    {
-        id: "W-106",
-        name: "Suresh Menon",
-        email: "suresh.menon@petrogas.com",
-        phone: "+91 96540 33219",
-        badge: "H2S-00436",
-        badgeExpiry: "2026-10-01", // Active - Expiring Soon (19 days)
-        department: "Gas Processing Facility",
-        role: "Safety Supervisor",
-        shift: "Evening",
-        dose: 27.8,
-        status: "Warning",
-        lastScan: "Today, 03:50 PM"
-    },
-    {
-        id: "W-107",
-        name: "Devendra Joshi",
-        email: "devendra.joshi@petrogas.com",
-        phone: "+91 98211 44520",
-        badge: "H2S-00428",
-        badgeExpiry: "2026-08-25", // Expired (passed)
-        department: "Refining Unit B",
-        role: "Maintenance Technician",
-        shift: "Morning",
-        dose: 16.2,
-        status: "Normal",
-        lastScan: "3 days ago"
-    },
-    {
-        id: "W-108",
-        name: "Ananya Deshmukh",
-        email: "ananya.d@petrogas.com",
-        phone: "+91 97341 88902",
-        badge: "H2S-00429",
-        badgeExpiry: "2026-09-02", // Expired (passed)
-        department: "Sulfur Recovery Unit",
-        role: "Process Operator",
-        shift: "Night",
-        dose: 22.4,
-        status: "Review",
-        lastScan: "Yesterday"
-    }
-];
+export const INITIAL_WORKERS = [];
+
+const DEFAULT_WORKER_NAMES = new Set([
+    "Ravi Kumar",
+    "Arjun Rao",
+    "Rahul Singh",
+    "Vikram Patel",
+    "Priya Sharma",
+    "Suresh Menon",
+    "Devendra Joshi",
+    "Ananya Deshmukh"
+]);
+
+const DEFAULT_WORKER_IDS = new Set([
+    "W-101", "W-102", "W-103", "W-104", "W-105", "W-106", "W-107", "W-108"
+]);
 
 export const INITIAL_LOGS = [
     {
@@ -344,21 +246,35 @@ export function getWorkers() {
         if (saved !== null) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
+                // One-time purge of previously loaded default demo workers
+                const hasPurged = localStorage.getItem("h2s_default_workers_purged_v1");
+                if (!hasPurged) {
+                    localStorage.setItem("h2s_default_workers_purged_v1", "true");
+                    const cleaned = parsed.filter(w =>
+                        !DEFAULT_WORKER_IDS.has(w.id) &&
+                        !DEFAULT_WORKER_NAMES.has(w.name) &&
+                        !w.email?.endsWith("@petrogas.com")
+                    );
+                    localStorage.setItem("h2s_workers_data", JSON.stringify(cleaned));
+                    return cleaned;
+                }
                 return parsed;
             }
         }
-        // First-time initialization only
-        localStorage.setItem("h2s_workers_data", JSON.stringify(INITIAL_WORKERS));
-        return INITIAL_WORKERS;
+        localStorage.setItem("h2s_workers_data", JSON.stringify([]));
+        return [];
     } catch {
-        return INITIAL_WORKERS;
+        return [];
     }
 }
 
+export function clearAllWorkers() {
+    saveWorkers([]);
+    return [];
+}
+
 export function resetWorkersToDefault() {
-    localStorage.setItem("h2s_workers_data", JSON.stringify(INITIAL_WORKERS));
-    window.dispatchEvent(new CustomEvent("h2s_workers_updated", { detail: INITIAL_WORKERS }));
-    return INITIAL_WORKERS;
+    return clearAllWorkers();
 }
 
 export function saveWorkers(workers) {

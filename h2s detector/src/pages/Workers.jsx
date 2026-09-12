@@ -15,7 +15,6 @@ import {
     Phone,
     RefreshCw,
     Calendar,
-    RotateCcw,
     CheckCircle2
 } from "lucide-react";
 import StatCard from "../components/StatCard";
@@ -24,8 +23,7 @@ import {
     saveWorkers,
     getBadgeStatus,
     calculateBadgeStats,
-    renewWorkerBadge,
-    resetWorkersToDefault
+    renewWorkerBadge
 } from "../data/workers.js";
 
 function generateRenewalBadgeId(workerId, count) {
@@ -204,13 +202,13 @@ function Workers() {
         setTimeout(() => setToastMessage(null), 4000);
     };
 
-    // Reset to default sample workforce
-    const handleResetDefault = () => {
-        if (window.confirm("Reset workforce to original default demo personnel? Any custom added workers will be replaced.")) {
-            const defaults = resetWorkersToDefault();
-            setWorkers(defaults);
+    // Clear all workers from registry
+    const handleClearAll = () => {
+        if (window.confirm("Are you sure you want to remove all workers from the registry?")) {
+            saveWorkers([]);
+            setWorkers([]);
             setSelectedWorkerDetails(null);
-            setToastMessage("✓ Workforce reset to standard demo dataset.");
+            setToastMessage("✓ All worker records cleared.");
             setTimeout(() => setToastMessage(null), 4000);
         }
     };
@@ -241,16 +239,18 @@ function Workers() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2.5">
-                    <button
-                        onClick={handleResetDefault}
-                        title="Restore initial 8 sample workers"
-                        className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-semibold transition"
-                    >
-                        <RotateCcw size={15} /> Reset Demo Data
-                    </button>
+                    {workers.length > 0 && (
+                        <button
+                            onClick={handleClearAll}
+                            title="Remove all workers from registry"
+                            className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 border border-slate-700 hover:border-red-800/80 rounded-lg text-xs font-semibold transition cursor-pointer"
+                        >
+                            <Trash2 size={15} /> Clear All
+                        </button>
+                    )}
                     <button
                         onClick={handleOpenAdd}
-                        className="inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2.5 rounded-lg transition shadow-md shadow-sky-500/20 text-sm shrink-0"
+                        className="inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2.5 rounded-lg transition shadow-md shadow-sky-500/20 text-sm shrink-0 cursor-pointer"
                     >
                         <UserPlus size={18} /> Add New Worker
                     </button>
@@ -419,7 +419,7 @@ function Workers() {
                             {filteredWorkers.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="py-12 text-center text-slate-500">
-                                        No workers found in registry. Click "Add New Worker" or "Reset Demo Data" to get started.
+                                        No workers found in registry. Click "Add New Worker" to register personnel.
                                     </td>
                                 </tr>
                             ) : (

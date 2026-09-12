@@ -97,7 +97,9 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                         {filteredItems.length === 0 ? (
                             <tr>
                                 <td colSpan="6" className="py-8 text-center text-slate-500">
-                                    No measurements found matching "{searchQuery}".
+                                    {searchQuery
+                                        ? `No measurements found matching "${searchQuery}".`
+                                        : "No registered personnel or measurements found. Add workers to start monitoring."}
                                 </td>
                             </tr>
                         ) : (
