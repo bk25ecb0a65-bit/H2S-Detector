@@ -16,7 +16,8 @@ import {
     RefreshCw,
     Calendar,
     RotateCcw,
-    CheckCircle2
+    CheckCircle2,
+    Mail
 } from "lucide-react";
 import StatCard from "../components/StatCard";
 import {
@@ -119,11 +120,16 @@ function Workers() {
             .toISOString()
             .split("T")[0];
 
+        const maxNum = workers.reduce((max, w) => {
+            const n = parseInt(String(w.id || "").match(/\d+/)?.[0] || "0", 10);
+            return n > max ? n : max;
+        }, 100);
+
         setFormData({
             name: "",
             email: "",
             phone: "",
-            badge: `H2S-00${430 + workers.length + 1}`,
+            badge: `H2S-00${430 + (maxNum - 100) + 1}`,
             badgeExpiry: defaultExpiry,
             department: "Refining Unit B",
             role: "Plant Operator",
@@ -160,16 +166,24 @@ function Workers() {
 
         let updatedList;
         if (editingWorker) {
-            updatedList = workers.map(w => w.id === editingWorker.id ? {
-                ...w,
+            const updatedWorker = {
+                ...editingWorker,
                 ...formData,
                 dose: doseNum,
                 status
-            } : w);
+            };
+            updatedList = workers.map(w => w.id === editingWorker.id ? updatedWorker : w);
             setToastMessage(`✓ Worker ${formData.name} updated successfully.`);
+            if (selectedWorkerDetails?.id === editingWorker.id) {
+                setSelectedWorkerDetails(updatedWorker);
+            }
         } else {
+            const maxNum = workers.reduce((max, w) => {
+                const n = parseInt(String(w.id || "").match(/\d+/)?.[0] || "0", 10);
+                return n > max ? n : max;
+            }, 100);
             const newWorker = {
-                id: `W-${100 + workers.length + 1}`,
+                id: `W-${maxNum + 1}`,
                 ...formData,
                 dose: doseNum,
                 status,
@@ -177,6 +191,7 @@ function Workers() {
             };
             updatedList = [newWorker, ...workers];
             setToastMessage(`✓ Worker ${newWorker.name} created successfully.`);
+            setSelectedWorkerDetails(newWorker);
         }
 
         setWorkers(updatedList);
@@ -451,7 +466,7 @@ function Workers() {
                                             <td className="py-4 px-5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-sm">
-                                                        {worker.name.split(" ").map(n => n[0]).join("")}
+                                                        {(worker.name || "Worker").trim().split(/\s+/).map(n => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "W"}
                                                     </div>
                                                     <div>
                                                         <div
@@ -751,7 +766,7 @@ function Workers() {
                             <div className="flex items-start justify-between pb-4 border-b border-slate-800">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white text-base">
-                                        {selectedWorkerDetails.name.split(" ").map(n => n[0]).join("")}
+                                        {(selectedWorkerDetails.name || "Worker").trim().split(/\s+/).map(n => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "W"}
                                     </div>
                                     <div>
                                         <h2 className="text-xl font-bold text-white">{selectedWorkerDetails.name}</h2>
@@ -839,6 +854,10 @@ function Workers() {
                             {/* Contact & Employee Details */}
                             <div className="text-xs space-y-2 bg-slate-950/40 p-3.5 rounded-lg border border-slate-800 text-slate-300">
                                 <div className="flex items-center gap-2">
+                                    <Mail size={14} className="text-slate-500" />
+                                    <span>{selectedWorkerDetails.email || "No email listed"}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <Phone size={14} className="text-slate-500" />
                                     <span>{selectedWorkerDetails.phone || "No phone listed"}</span>
                                 </div>
@@ -853,6 +872,16 @@ function Workers() {
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    onClick={() => {
+                                        const target = selectedWorkerDetails;
+                                        setSelectedWorkerDetails(null);
+                                        handleOpenEdit(target);
+                                    }}
+                                    className="px-4 py-2 bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs rounded-lg transition font-semibold flex items-center gap-1.5"
+                                >
+                                    <Edit2 size={13} /> Edit Worker
+                                </button>
                                 <button
                                     onClick={() => setSelectedWorkerDetails(null)}
                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg transition font-medium"

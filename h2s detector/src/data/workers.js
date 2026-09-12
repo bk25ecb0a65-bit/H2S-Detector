@@ -27,10 +27,6 @@ const REMOVED_DEMO_NAMES = new Set([
     "Ananya Deshmukh"
 ]);
 
-const REMOVED_DEMO_IDS = new Set([
-    "W-102", "W-103", "W-104", "W-105", "W-106", "W-107", "W-108"
-]);
-
 export const INITIAL_LOGS = [
     {
         id: "EXP-8901",
@@ -161,24 +157,22 @@ export function getWorkers() {
         const saved = localStorage.getItem("h2s_workers_data");
         if (saved !== null) {
             const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                // Unconditionally filter out extra demo workers
+            if (Array.isArray(parsed)) {
+                // Filter out only specific legacy demo records if present from older versions
                 const filtered = parsed.filter(w =>
-                    !REMOVED_DEMO_IDS.has(w.id) &&
                     !REMOVED_DEMO_NAMES.has(w.name) &&
-                    !w.email?.includes("arjun") &&
-                    !w.email?.includes("rahul") &&
-                    !w.email?.includes("vikram") &&
-                    !w.email?.includes("priya") &&
-                    !w.email?.includes("suresh") &&
-                    !w.email?.includes("devendra") &&
-                    !w.email?.includes("ananya")
+                    !w.email?.includes("arjun.rao") &&
+                    !w.email?.includes("rahul.singh") &&
+                    !w.email?.includes("vikram.patel") &&
+                    !w.email?.includes("priya.sharma") &&
+                    !w.email?.includes("suresh.menon") &&
+                    !w.email?.includes("devendra.joshi") &&
+                    !w.email?.includes("ananya.deshmukh")
                 );
-                const updated = filtered.length > 0 ? filtered : INITIAL_WORKERS;
-                if (updated.length !== parsed.length) {
-                    localStorage.setItem("h2s_workers_data", JSON.stringify(updated));
+                if (filtered.length !== parsed.length) {
+                    localStorage.setItem("h2s_workers_data", JSON.stringify(filtered));
                 }
-                return updated;
+                return filtered;
             }
         }
         localStorage.setItem("h2s_workers_data", JSON.stringify(INITIAL_WORKERS));
@@ -211,19 +205,17 @@ export function saveWorkers(workers) {
 export function getLogs() {
     try {
         const saved = localStorage.getItem("h2s_exposure_logs");
-        if (saved) {
+        if (saved !== null) {
             const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed)) {
                 // Filter out logs for removed demo workers
                 const filtered = parsed.filter(l =>
-                    !REMOVED_DEMO_IDS.has(l.workerId) &&
                     !REMOVED_DEMO_NAMES.has(l.worker)
                 );
-                const updated = filtered.length > 0 ? filtered : INITIAL_LOGS;
-                if (updated.length !== parsed.length) {
-                    localStorage.setItem("h2s_exposure_logs", JSON.stringify(updated));
+                if (filtered.length !== parsed.length) {
+                    localStorage.setItem("h2s_exposure_logs", JSON.stringify(filtered));
                 }
-                return updated;
+                return filtered;
             }
         }
         localStorage.setItem("h2s_exposure_logs", JSON.stringify(INITIAL_LOGS));
