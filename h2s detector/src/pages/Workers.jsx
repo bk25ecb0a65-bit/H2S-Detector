@@ -15,6 +15,7 @@ import {
     Phone,
     RefreshCw,
     Calendar,
+    RotateCcw,
     CheckCircle2
 } from "lucide-react";
 import StatCard from "../components/StatCard";
@@ -23,7 +24,8 @@ import {
     saveWorkers,
     getBadgeStatus,
     calculateBadgeStats,
-    renewWorkerBadge
+    renewWorkerBadge,
+    resetWorkersToDefault
 } from "../data/workers.js";
 
 function generateRenewalBadgeId(workerId, count) {
@@ -202,6 +204,17 @@ function Workers() {
         setTimeout(() => setToastMessage(null), 4000);
     };
 
+    // Reset workforce to single default worker
+    const handleResetDefault = () => {
+        if (window.confirm("Reset workforce to standard default profile (1 worker)? Any custom workers will be replaced.")) {
+            const defaults = resetWorkersToDefault();
+            setWorkers(defaults);
+            setSelectedWorkerDetails(null);
+            setToastMessage("✓ Workforce reset to 1 standard default worker (Ravi Kumar).");
+            setTimeout(() => setToastMessage(null), 4000);
+        }
+    };
+
     // Clear all workers from registry
     const handleClearAll = () => {
         if (window.confirm("Are you sure you want to remove all workers from the registry?")) {
@@ -239,6 +252,13 @@ function Workers() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2.5">
+                    <button
+                        onClick={handleResetDefault}
+                        title="Reset to 1 default worker"
+                        className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                        <RotateCcw size={15} /> Reset Default
+                    </button>
                     {workers.length > 0 && (
                         <button
                             onClick={handleClearAll}
