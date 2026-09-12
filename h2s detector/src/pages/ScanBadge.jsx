@@ -1,13 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     Camera,
     Upload,
     Crop,
     CheckCircle2,
     AlertTriangle,
-    RefreshCw,
     Clock,
-    Activity,
     Info,
     Sliders,
     Video,
@@ -199,12 +197,30 @@ function ScanBadge() {
     const [errorMsg, setErrorMsg] = useState(null);
 
     // Find if the entered Badge ID corresponds to an existing worker
-    const [workersList, setWorkersList] = useState([]);
-    useEffect(() => {
-        const saved = localStorage.getItem("h2s_workers_data");
-        if (saved) {
-            try { setWorkersList(JSON.parse(saved)); } catch (e) {}
+    const [workersList, setWorkersList] = useState(() => {
+        try {
+            const saved = localStorage.getItem("h2s_workers_data");
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
         }
+    });
+
+    useEffect(() => {
+        const handleSync = () => {
+            try {
+                const saved = localStorage.getItem("h2s_workers_data");
+                if (saved) setWorkersList(JSON.parse(saved));
+            } catch {
+                // Ignore parse errors
+            }
+        };
+        window.addEventListener("storage", handleSync);
+        window.addEventListener("h2s_workers_updated", handleSync);
+        return () => {
+            window.removeEventListener("storage", handleSync);
+            window.removeEventListener("h2s_workers_updated", handleSync);
+        };
     }, []);
 
     const matchedWorker = workersList.find(w =>
@@ -213,38 +229,65 @@ function ScanBadge() {
     );
 
     // ============================================================
-    // CAMERA STREAM CONTROLS
+    // CAMERA STREAM CONTROLS & ATTACHMENT
     // ============================================================
     const startCamera = async (mode = facingMode) => {
         try {
             setErrorMsg(null);
             stopCamera();
 
-            const constraints = {
-                video: {
-                    facingMode: mode,
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                },
-                audio: false
-            };
-
-            const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-            streamRef.current = mediaStream;
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-                await videoRef.current.play();
+            if (!navigator?.mediaDevices?.getUserMedia) {
+                throw new Error("Camera API is not supported in this browser. Ensure you are accessing via HTTPS or localhost.");
             }
 
+            let mediaStream;
+            try {
+                // First attempt: preferred facingMode with ideal resolution
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: mode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+            } catch (firstErr) {
+                console.warn("Preferred camera constraints failed, attempting fallback to standard camera:", firstErr);
+                // Fallback attempt: any accessible video device
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+            }
+
+            streamRef.current = mediaStream;
             setIsCameraActive(true);
             setImageObj(null);
             setScanResult(null);
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = mediaStream;
+                videoRef.current.play().catch(() => {});
+            }
         } catch (err) {
             setIsCameraActive(false);
-            setErrorMsg(`Camera access failed: ${err.message}. Please allow camera permissions or upload an image.`);
+            setErrorMsg(`Camera access failed: ${err.message}. Please allow camera permissions, or upload an image / use the sample test badge.`);
         }
     };
+
+    // Ensure video element receives stream immediately when mounted in DOM
+    useEffect(() => {
+        if (isCameraActive && videoRef.current && streamRef.current) {
+            const video = videoRef.current;
+            if (video.srcObject !== streamRef.current) {
+                video.srcObject = streamRef.current;
+            }
+            video.onloadedmetadata = () => {
+                video.play().catch(() => {});
+            };
+            video.play().catch(() => {});
+        }
+    }, [isCameraActive]);
 
     const stopCamera = () => {
         if (streamRef.current) {
@@ -266,13 +309,19 @@ function ScanBadge() {
     const captureFromCamera = () => {
         if (!videoRef.current) return;
         const video = videoRef.current;
-        if (video.videoWidth === 0 || video.videoHeight === 0) return;
+        const width = video.videoWidth || video.clientWidth || 640;
+        const height = video.videoHeight || video.clientHeight || 480;
+
+        if (width === 0 || height === 0) {
+            setErrorMsg("Camera feed is still loading. Please wait a moment and try again.");
+            return;
+        }
 
         const offCanvas = document.createElement("canvas");
-        offCanvas.width = video.videoWidth;
-        offCanvas.height = video.videoHeight;
+        offCanvas.width = width;
+        offCanvas.height = height;
         const offCtx = offCanvas.getContext("2d");
-        offCtx.drawImage(video, 0, 0, offCanvas.width, offCanvas.height);
+        offCtx.drawImage(video, 0, 0, width, height);
 
         const img = new Image();
         img.onload = () => {
@@ -289,6 +338,54 @@ function ScanBadge() {
             setErrorMsg(null);
         };
         img.src = offCanvas.toDataURL("image/png");
+    };
+
+    // Simulated test strip for camera-less environments or instant testing
+    const loadSampleBadge = () => {
+        stopCamera();
+        setErrorMsg(null);
+        setScanResult(null);
+
+        const sampleCanvas = document.createElement("canvas");
+        sampleCanvas.width = 600;
+        sampleCanvas.height = 600;
+        const sCtx = sampleCanvas.getContext("2d");
+
+        // Badge housing
+        sCtx.fillStyle = "#1e293b";
+        sCtx.fillRect(0, 0, 600, 600);
+        sCtx.strokeStyle = "#475569";
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(30, 30, 540, 540);
+
+        sCtx.fillStyle = "#94a3b8";
+        sCtx.font = "bold 18px monospace";
+        sCtx.fillText("H2S COLORIMETRIC DOSIMETER STRIP", 50, 80);
+        sCtx.font = "13px sans-serif";
+        sCtx.fillText(`Test Strip Sample · Badge: ${badgeId}`, 50, 110);
+
+        // Strip exposure aperture
+        sCtx.fillStyle = "#0f172a";
+        sCtx.fillRect(150, 150, 300, 300);
+
+        // Chemically exposed test spot (Lead-Acetate exposed strip: RGB ~215, 202, 142)
+        sCtx.fillStyle = "rgb(215, 202, 142)";
+        sCtx.beginPath();
+        sCtx.arc(300, 300, 105, 0, Math.PI * 2);
+        sCtx.fill();
+
+        const img = new Image();
+        img.onload = () => {
+            setImageObj(img);
+            const initialSize = 160;
+            setCropRect({
+                x: 220,
+                y: 220,
+                width: initialSize,
+                height: initialSize
+            });
+        };
+        img.src = sampleCanvas.toDataURL("image/png");
     };
 
     useEffect(() => {
@@ -513,6 +610,7 @@ function ScanBadge() {
             }
 
             localStorage.setItem("h2s_workers_data", JSON.stringify(updatedWorkers));
+            window.dispatchEvent(new CustomEvent("h2s_workers_updated", { detail: updatedWorkers }));
             setWorkersList(updatedWorkers);
 
             // 4. Save to Exposure History Logs (h2s_exposure_logs)
@@ -531,7 +629,9 @@ function ScanBadge() {
                 status: newTotalDose >= 25 ? "Critical" : newTotalDose >= 18 ? "Review" : "Normal",
                 notes: `Environmental: Temp ${temperature}°C, RH ${humidity}%. Analyzed with Lead-Acetate calibration curve.`
             };
-            localStorage.setItem("h2s_exposure_logs", JSON.stringify([newLogEntry, ...existingLogs]));
+            const updatedLogs = [newLogEntry, ...existingLogs];
+            localStorage.setItem("h2s_exposure_logs", JSON.stringify(updatedLogs));
+            window.dispatchEvent(new CustomEvent("h2s_logs_updated", { detail: updatedLogs }));
 
             // 5. Update UI states
             setScanResult({
@@ -687,47 +787,64 @@ function ScanBadge() {
                     </div>
                 </div>
 
-                {/* Choice: Live Camera or File Upload */}
+                {/* Choice: Live Camera, File Upload, or Sample Test Badge */}
                 {!imageObj && !isCameraActive && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button
-                            type="button"
-                            onClick={() => startCamera()}
-                            className="p-8 border-2 border-dashed border-slate-700 hover:border-sky-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center"
-                        >
-                            <div className="p-4 bg-sky-500/10 group-hover:bg-sky-500/20 text-sky-400 rounded-full transition">
-                                <Video size={36} />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-slate-200 text-base">Open Live Camera</p>
-                                <p className="text-xs text-slate-400 mt-1">Capture live strip through webcam or smartphone lens</p>
-                            </div>
-                            <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-sky-500 text-slate-950 rounded-lg text-sm font-semibold">
-                                Start Camera
-                            </span>
-                        </button>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button
+                                type="button"
+                                onClick={() => startCamera()}
+                                className="p-8 border-2 border-dashed border-slate-700 hover:border-sky-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center"
+                            >
+                                <div className="p-4 bg-sky-500/10 group-hover:bg-sky-500/20 text-sky-400 rounded-full transition">
+                                    <Video size={36} />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-slate-200 text-base">Open Live Camera</p>
+                                    <p className="text-xs text-slate-400 mt-1">Capture live strip through webcam or smartphone lens</p>
+                                </div>
+                                <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-sky-500 text-slate-950 rounded-lg text-sm font-semibold">
+                                    Start Camera
+                                </span>
+                            </button>
 
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className="p-8 border-2 border-dashed border-slate-700 hover:border-emerald-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center cursor-pointer"
-                        >
-                            <div className="p-4 bg-emerald-500/10 group-hover:bg-emerald-500/20 text-emerald-400 rounded-full transition">
-                                <Upload size={36} />
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="p-8 border-2 border-dashed border-slate-700 hover:border-emerald-500/70 rounded-xl bg-slate-950/40 hover:bg-slate-950/80 transition flex flex-col items-center justify-center gap-3 group text-center cursor-pointer"
+                            >
+                                <div className="p-4 bg-emerald-500/10 group-hover:bg-emerald-500/20 text-emerald-400 rounded-full transition">
+                                    <Upload size={36} />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-slate-200 text-base">Upload Image File</p>
+                                    <p className="text-xs text-slate-400 mt-1">Select PNG, JPG, or snapshot from gallery</p>
+                                </div>
+                                <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg text-sm font-semibold">
+                                    Browse Files
+                                </span>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
                             </div>
-                            <div>
-                                <p className="font-semibold text-slate-200 text-base">Upload Image File</p>
-                                <p className="text-xs text-slate-400 mt-1">Select PNG, JPG, or snapshot from gallery</p>
+                        </div>
+
+                        {/* Instant Test Strip Generator */}
+                        <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+                            <div className="flex items-center gap-2.5">
+                                <Sparkles size={18} className="text-amber-400 shrink-0" />
+                                <span>No physical badge or webcam right now? Generate a simulated calibrated dosimeter badge instantly.</span>
                             </div>
-                            <span className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg text-sm font-semibold">
-                                Browse Files
-                            </span>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
+                            <button
+                                type="button"
+                                onClick={loadSampleBadge}
+                                className="whitespace-nowrap px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold rounded-lg transition cursor-pointer"
+                            >
+                                Load Test Badge
+                            </button>
                         </div>
                     </div>
                 )}
@@ -744,14 +861,14 @@ function ScanBadge() {
                                 <button
                                     type="button"
                                     onClick={toggleFacingMode}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-xs"
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-xs cursor-pointer"
                                 >
                                     <SwitchCamera size={14} /> Flip Camera
                                 </button>
                                 <button
                                     type="button"
                                     onClick={stopCamera}
-                                    className="flex items-center gap-1 px-3 py-1 bg-slate-800 hover:bg-red-950 text-red-400 rounded-lg border border-slate-700 text-xs"
+                                    className="flex items-center gap-1 px-3 py-1 bg-slate-800 hover:bg-red-950 text-red-400 rounded-lg border border-slate-700 text-xs cursor-pointer"
                                 >
                                     <X size={14} /> Close
                                 </button>
@@ -760,10 +877,19 @@ function ScanBadge() {
 
                         <div className="relative w-full max-h-[480px] overflow-hidden rounded-xl bg-black flex items-center justify-center border border-slate-800">
                             <video
-                                ref={videoRef}
+                                ref={(el) => {
+                                    videoRef.current = el;
+                                    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                                        el.srcObject = streamRef.current;
+                                        el.play().catch(() => {});
+                                    }
+                                }}
                                 autoPlay
                                 playsInline
                                 muted
+                                onLoadedMetadata={() => {
+                                    videoRef.current?.play().catch(() => {});
+                                }}
                                 className="w-full h-auto max-h-[480px] object-contain"
                             />
                             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">

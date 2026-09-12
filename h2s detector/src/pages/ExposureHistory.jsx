@@ -1,19 +1,12 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     Activity,
-    Calendar,
     Download,
-    Filter,
     Search,
     AlertTriangle,
     ShieldCheck,
-    TrendingUp,
-    Clock,
-    FileSpreadsheet,
     Eye,
     X,
-    Building2,
-    CheckCircle2,
     AlertCircle
 } from "lucide-react";
 import {
@@ -185,7 +178,6 @@ function ExposureHistory() {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [shiftFilter, setShiftFilter] = useState("All");
-    const [timeRange, setTimeRange] = useState("7d");
     const [selectedLog, setSelectedLog] = useState(null);
 
     // Read logs from localStorage to pick up real-time scans
@@ -201,7 +193,13 @@ function ExposureHistory() {
             if (saved) setAllLogs(JSON.parse(saved));
         };
         window.addEventListener("focus", handleSync);
-        return () => window.removeEventListener("focus", handleSync);
+        window.addEventListener("storage", handleSync);
+        window.addEventListener("h2s_logs_updated", handleSync);
+        return () => {
+            window.removeEventListener("focus", handleSync);
+            window.removeEventListener("storage", handleSync);
+            window.removeEventListener("h2s_logs_updated", handleSync);
+        };
     }, []);
 
     // Filtered logs
@@ -220,7 +218,7 @@ function ExposureHistory() {
 
             return matchesSearch && matchesStatus && matchesShift;
         });
-    }, [searchQuery, statusFilter, shiftFilter]);
+    }, [allLogs, searchQuery, statusFilter, shiftFilter]);
 
     // Export table data to CSV file
     const exportCSV = () => {

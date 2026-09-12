@@ -1,90 +1,177 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Users,
     ShieldCheck,
     AlertTriangle,
-    ScanLine
+    ScanLine,
+    ArrowRight,
+    UserPlus
 } from "lucide-react";
 import ExposureChart from "../components/ExposureChart";
 import StatCard from "../components/StatCard";
 import RecentExposure from "../components/RecentExposure";
-import { getWorkers, getLogs } from "../data/workers";
+import {
+    getWorkers,
+    getLogs,
+    calculateBadgeStats,
+    getBadgeStatus
+} from "../data/workers.js";
 
 function Dashboard() {
-    const [workers, setWorkers] = useState([]);
-    const [logs, setLogs] = useState([]);
+    const navigate = useNavigate();
 
+    // Live state from data layer
+    const [workers, setWorkers] = useState(() => getWorkers());
+    const [logs, setLogs] = useState(() => getLogs());
+
+    // Synchronize data on window focus, custom events, or storage updates
     useEffect(() => {
-        setWorkers(getWorkers());
-        setLogs(getLogs());
+        const refreshData = () => {
+            setWorkers(getWorkers());
+            setLogs(getLogs());
+        };
+
+        window.addEventListener("focus", refreshData);
+        window.addEventListener("storage", refreshData);
+        window.addEventListener("h2s_workers_updated", refreshData);
+        window.addEventListener("h2s_logs_updated", refreshData);
+
+        return () => {
+            window.removeEventListener("focus", refreshData);
+            window.removeEventListener("storage", refreshData);
+            window.removeEventListener("h2s_workers_updated", refreshData);
+            window.removeEventListener("h2s_logs_updated", refreshData);
+        };
     }, []);
 
-    const today = new Date().toISOString().split("T")[0];
+    // Calculated badge & worker metrics
+    const stats = useMemo(() => {
+        return calculateBadgeStats(workers);
+    }, [workers]);
 
-    // 1. Total registered workers
-    const totalWorkers = workers.length;
+    // Calculate today's scans count from logs
+    const todayScansCount = useMemo(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const count = logs.filter(log => log.timestamp && log.timestamp.startsWith(todayStr)).length;
+        return count > 0 ? count : logs.length;
+    }, [logs]);
 
-    // 2. Expired badges count (badgeExpiry date is in the past)
-    const expiredBadges = workers.filter((worker) => {
-        if (!worker.badgeExpiry) return false;
-        return worker.badgeExpiry < today;
-    }).length;
-
-    // 3. Active badges (currently valid / not expired)
-    const activeBadges = Math.max(0, totalWorkers - expiredBadges);
-
-    // 4. Scans count (today's scans or total fallback)
-    const todayScans = logs.filter((log) => {
-        return log.timestamp && log.timestamp.startsWith(today);
-    }).length;
-    const totalScansCount = logs.length;
+    // List of workers with expired badges
+    const expiredWorkerList = useMemo(() => {
+        return workers.filter(w => getBadgeStatus(w.badgeExpiry).status === "Expired");
+    }, [workers]);
 
     return (
-        <div>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold">
-                    H₂S Exposure Dashboard
-                </h1>
-                <p className="text-slate-400 mt-2">
-                    Monitor cumulative exposure, badge validity, and real-time personnel safety.
-                </p>
+        <div className="space-y-6">
+            {/* Header with Title & Quick Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-white">
+                        H₂S Exposure Dashboard
+                    </h1>
+                    <p className="text-slate-400 mt-1 text-sm">
+                        Live workplace dosimeter monitoring, badge validity, and occupational exposure limits.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        onClick={() => navigate("/scan")}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition shadow-md shadow-blue-600/20"
+                    >
+                        <ScanLine size={16} /> Scan Badge
+                    </button>
+                    <button
+                        onClick={() => navigate("/workers")}
+                        className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-lg transition"
+                    >
+                        <UserPlus size={16} className="text-sky-400" /> Manage Workers
+                    </button>
+                </div>
             </div>
 
+            {/* Expired Badges Safety Action Alert Banner */}
+            {stats.expiredBadges > 0 && (
+                <div className="bg-red-950/40 border border-red-800/80 rounded-xl p-4 text-red-300 shadow-lg shadow-red-950/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={20} />
+                        <div>
+                            <div className="font-bold text-sm text-red-200">
+                                Safety Alert: {stats.expiredBadges} Badge{stats.expiredBadges > 1 ? "s" : ""} Expired & Require Immediate Replacement
+                            </div>
+                            <p className="text-xs text-red-300/90 mt-0.5">
+                                Workers with expired badges must not enter operational plant zones without strip replacement.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {expiredWorkerList.map(w => (
+                                    <span key={w.id} className="text-[11px] px-2 py-0.5 rounded bg-red-900/60 border border-red-700/60 font-mono text-red-200">
+                                        {w.name} ({w.badge} · Exp: {w.badgeExpiry})
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate("/workers")}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs transition shrink-0 inline-flex items-center gap-1.5 self-start md:self-auto"
+                    >
+                        Replace in Workers Dashboard <ArrowRight size={14} />
+                    </button>
+                </div>
+            )}
+
+            {/* Dynamic KPI Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                 <StatCard
                     title="Total Workers"
-                    value={totalWorkers}
-                    description="Registered personnel"
-                    icon={<Users size={22} className="text-sky-400" />}
+                    value={stats.totalWorkers}
+                    description="Registered personnel in registry"
+                    icon={<Users className="text-sky-400" size={24} />}
+                    onClick={() => navigate("/workers")}
+                    badge="Directory"
                 />
 
                 <StatCard
                     title="Active Badges"
-                    value={activeBadges}
-                    description="Currently valid & monitored"
-                    icon={<ShieldCheck size={22} className="text-emerald-400" />}
+                    value={stats.activeBadges}
+                    description={
+                        stats.expiringSoonBadges > 0
+                            ? `${stats.expiringSoonBadges} badge(s) expiring within 30 days`
+                            : "All assigned badges currently valid"
+                    }
+                    icon={<ShieldCheck className="text-emerald-400" size={24} />}
+                    onClick={() => navigate("/badges")}
+                    badge="Valid"
                 />
 
                 <StatCard
                     title="Expired Badges"
-                    value={expiredBadges}
+                    value={stats.expiredBadges}
                     description="Require immediate replacement"
-                    icon={<AlertTriangle size={22} className="text-amber-400" />}
+                    icon={<AlertTriangle className={stats.expiredBadges > 0 ? "text-red-400" : "text-slate-400"} size={24} />}
+                    onClick={() => navigate("/workers")}
+                    alert={stats.expiredBadges > 0}
+                    badge={stats.expiredBadges > 0 ? "Action Required" : "0 Expired"}
                 />
 
                 <StatCard
                     title="Today's Scans"
-                    value={todayScans || totalScansCount}
-                    description={`${totalScansCount} total measurements`}
-                    icon={<ScanLine size={22} className="text-blue-400" />}
+                    value={todayScansCount}
+                    description="Dosimeter exposure measurements"
+                    icon={<ScanLine className="text-indigo-400" size={24} />}
+                    onClick={() => navigate("/exposure")}
+                    badge="Logged"
                 />
             </div>
 
+            {/* Exposure Trend Chart */}
             <div className="mt-6">
-                <ExposureChart />
+                <ExposureChart logs={logs} />
             </div>
 
-            <RecentExposure />
+            {/* Recent Exposure Measurements Table with Live Badge Validity */}
+            <RecentExposure workers={workers} logs={logs} />
         </div>
     );
 }
