@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import StatCard from "../components/StatCard";
 
-// Comprehensive mock historical exposure log dataset
+// Comprehensive historical exposure log dataset
 const INITIAL_LOGS = [
     {
         id: "EXP-8901",
@@ -40,76 +40,6 @@ const INITIAL_LOGS = [
         notes: "Routine shift inspection. Ventilation active."
     },
     {
-        id: "EXP-8902",
-        timestamp: "2026-09-12 09:15",
-        worker: "Arjun Rao",
-        workerId: "W-102",
-        badge: "H2S-00432",
-        location: "Sulfur Recovery Unit - Condenser",
-        shift: "Night",
-        duration: "10 min scan",
-        concentration: "4 ppm",
-        dose: 21.7,
-        status: "Review",
-        notes: "Faint odor reported. Worker rotated to clean zone."
-    },
-    {
-        id: "EXP-8903",
-        timestamp: "2026-09-11 16:40",
-        worker: "Suresh Menon",
-        workerId: "W-106",
-        badge: "H2S-00436",
-        location: "Gas Processing Facility - Compressor",
-        shift: "Evening",
-        duration: "30 min scan",
-        concentration: "8 ppm",
-        dose: 27.8,
-        status: "Critical",
-        notes: "Valve seal leak detected and isolated. Medical check cleared."
-    },
-    {
-        id: "EXP-8904",
-        timestamp: "2026-09-11 11:20",
-        worker: "Rahul Singh",
-        workerId: "W-103",
-        badge: "H2S-00433",
-        location: "Pipeline Maintenance - Valve Station 3",
-        shift: "Morning",
-        duration: "1 min scan",
-        concentration: "100 ppb",
-        dose: 6.2,
-        status: "Normal",
-        notes: "Pipeline flange torque verification completed."
-    },
-    {
-        id: "EXP-8905",
-        timestamp: "2026-09-10 17:05",
-        worker: "Vikram Patel",
-        workerId: "W-104",
-        badge: "H2S-00434",
-        location: "Drilling Platform 4 - Mud Pit Area",
-        shift: "Evening",
-        duration: "5 min scan",
-        concentration: "4 ppm",
-        dose: 18.5,
-        status: "Review",
-        notes: "Degasser operational. Dose monitored during pipe trip."
-    },
-    {
-        id: "EXP-8906",
-        timestamp: "2026-09-10 10:10",
-        worker: "Priya Sharma",
-        workerId: "W-105",
-        badge: "H2S-00435",
-        location: "Chemical Analysis Lab - Sample Fume Hood",
-        shift: "Morning",
-        duration: "10 min scan",
-        concentration: "100 ppb",
-        dose: 3.1,
-        status: "Normal",
-        notes: "Quarterly crude sample distillation testing."
-    },
-    {
         id: "EXP-8907",
         timestamp: "2026-09-09 15:30",
         worker: "Ravi Kumar",
@@ -122,34 +52,6 @@ const INITIAL_LOGS = [
         dose: 11.2,
         status: "Normal",
         notes: "Catalyst changeover inspection."
-    },
-    {
-        id: "EXP-8908",
-        timestamp: "2026-09-08 21:45",
-        worker: "Arjun Rao",
-        workerId: "W-102",
-        badge: "H2S-00432",
-        location: "Sulfur Recovery Unit - Tail Gas Unit",
-        shift: "Night",
-        duration: "30 min scan",
-        concentration: "2 ppm",
-        dose: 16.4,
-        status: "Normal",
-        notes: "Incinerator burner check."
-    },
-    {
-        id: "EXP-8909",
-        timestamp: "2026-09-07 13:00",
-        worker: "Vikram Patel",
-        workerId: "W-104",
-        badge: "H2S-00434",
-        location: "Drilling Platform 4 - Wellhead Area",
-        shift: "Evening",
-        duration: "5 min scan",
-        concentration: "8 ppm",
-        dose: 24.1,
-        status: "Review",
-        notes: "Circulation fluid treatment adjusted."
     }
 ];
 

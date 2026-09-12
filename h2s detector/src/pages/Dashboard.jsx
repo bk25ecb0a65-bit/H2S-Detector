@@ -31,7 +31,6 @@ function Dashboard() {
             setWorkers(getWorkers());
             setLogs(getLogs());
         };
-
         window.addEventListener("focus", refreshData);
         window.addEventListener("storage", refreshData);
         window.addEventListener("h2s_workers_updated", refreshData);
@@ -167,7 +166,7 @@ function Dashboard() {
 
             {/* Exposure Trend Chart */}
             <div className="mt-6">
-                <ExposureChart logs={logs} />
+                <ExposureChart workers={workers} logs={logs} />
             </div>
 
             {/* Recent Exposure Measurements Table with Live Badge Validity */}

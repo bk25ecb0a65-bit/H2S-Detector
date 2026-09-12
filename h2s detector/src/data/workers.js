@@ -46,118 +46,20 @@ export const INITIAL_LOGS = [
         status: "Normal",
         notes: "Routine shift inspection. Ventilation active."
     },
-    // {
-    //     id: "EXP-8902",
-    //     timestamp: "2026-09-12 09:15",
-    //     worker: "Arjun Rao",
-    //     workerId: "W-102",
-    //     badge: "H2S-00432",
-    //     location: "Sulfur Recovery Unit - Condenser",
-    //     shift: "Night",
-    //     duration: "10 min scan",
-    //     concentration: "4 ppm",
-    //     dose: 21.7,
-    //     status: "Review",
-    //     notes: "Faint odor reported. Worker rotated to clean zone."
-    // },
-    // {
-    //     id: "EXP-8903",
-    //     timestamp: "2026-09-11 16:40",
-    //     worker: "Suresh Menon",
-    //     workerId: "W-106",
-    //     badge: "H2S-00436",
-    //     location: "Gas Processing Facility - Compressor",
-    //     shift: "Evening",
-    //     duration: "30 min scan",
-    //     concentration: "8 ppm",
-    //     dose: 27.8,
-    //     status: "Critical",
-    //     notes: "Valve seal leak detected and isolated. Medical check cleared."
-    // },
-    // {
-    //     id: "EXP-8904",
-    //     timestamp: "2026-09-11 11:20",
-    //     worker: "Rahul Singh",
-    //     workerId: "W-103",
-    //     badge: "H2S-00433",
-    //     location: "Pipeline Maintenance - Valve Station 3",
-    //     shift: "Morning",
-    //     duration: "1 min scan",
-    //     concentration: "100 ppb",
-    //     dose: 6.2,
-    //     status: "Normal",
-    //     notes: "Pipeline flange torque verification completed."
-    // },
-    // {
-    //     id: "EXP-8905",
-    //     timestamp: "2026-09-10 17:05",
-    //     worker: "Vikram Patel",
-    //     workerId: "W-104",
-    //     badge: "H2S-00434",
-    //     location: "Drilling Platform 4 - Mud Pit Area",
-    //     shift: "Evening",
-    //     duration: "5 min scan",
-    //     concentration: "4 ppm",
-    //     dose: 18.5,
-    //     status: "Review",
-    //     notes: "Degasser operational. Dose monitored during pipe trip."
-    // },
-    // {
-    //     id: "EXP-8906",
-    //     timestamp: "2026-09-10 10:10",
-    //     worker: "Priya Sharma",
-    //     workerId: "W-105",
-    //     badge: "H2S-00435",
-    //     location: "Chemical Analysis Lab - Sample Fume Hood",
-    //     shift: "Morning",
-    //     duration: "10 min scan",
-    //     concentration: "100 ppb",
-    //     dose: 3.1,
-    //     status: "Normal",
-    //     notes: "Quarterly crude sample distillation testing."
-    // },
-    // {
-    //     id: "EXP-8907",
-    //     timestamp: "2026-09-09 15:30",
-    //     worker: "Ravi Kumar",
-    //     workerId: "W-101",
-    //     badge: "H2S-00431",
-    //     location: "Refining Unit B - Desulfurization",
-    //     shift: "Morning",
-    //     duration: "5 min scan",
-    //     concentration: "1 ppm",
-    //     dose: 11.2,
-    //     status: "Normal",
-    //     notes: "Catalyst changeover inspection."
-    // },
-    // {
-    //     id: "EXP-8908",
-    //     timestamp: "2026-09-08 21:45",
-    //     worker: "Arjun Rao",
-    //     workerId: "W-102",
-    //     badge: "H2S-00432",
-    //     location: "Sulfur Recovery Unit - Tail Gas Unit",
-    //     shift: "Night",
-    //     duration: "30 min scan",
-    //     concentration: "2 ppm",
-    //     dose: 16.4,
-    //     status: "Normal",
-    //     notes: "Incinerator burner check."
-    // },
-    // {
-    //     id: "EXP-8909",
-    //     timestamp: "2026-09-07 13:00",
-    //     worker: "Vikram Patel",
-    //     workerId: "W-104",
-    //     badge: "H2S-00434",
-    //     location: "Drilling Platform 4 - Wellhead Area",
-    //     shift: "Evening",
-    //     duration: "5 min scan",
-    //     concentration: "8 ppm",
-    //     dose: 24.1,
-    //     status: "Review",
-    //     notes: "Circulation fluid treatment adjusted."
-    // }
+    {
+        id: "EXP-8907",
+        timestamp: "2026-09-09 15:30",
+        worker: "Ravi Kumar",
+        workerId: "W-101",
+        badge: "H2S-00431",
+        location: "Refining Unit B - Desulfurization",
+        shift: "Morning",
+        duration: "5 min scan",
+        concentration: "1 ppm",
+        dose: 11.2,
+        status: "Normal",
+        notes: "Catalyst changeover inspection."
+    }
 ];
 
 /**
@@ -259,22 +161,24 @@ export function getWorkers() {
         const saved = localStorage.getItem("h2s_workers_data");
         if (saved !== null) {
             const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-                // One-time sync to reduce default demo workers to exactly 1
-                const hasReduced = localStorage.getItem("h2s_default_reduced_to_1_v2");
-                if (!hasReduced) {
-                    localStorage.setItem("h2s_default_reduced_to_1_v2", "true");
-                    // Remove extra demo workers W-102 through W-108
-                    const filtered = parsed.filter(w =>
-                        !REMOVED_DEMO_IDS.has(w.id) &&
-                        !REMOVED_DEMO_NAMES.has(w.name)
-                    );
-                    // If empty, initialize with the 1 default worker
-                    const updated = filtered.length > 0 ? filtered : INITIAL_WORKERS;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Unconditionally filter out extra demo workers
+                const filtered = parsed.filter(w =>
+                    !REMOVED_DEMO_IDS.has(w.id) &&
+                    !REMOVED_DEMO_NAMES.has(w.name) &&
+                    !w.email?.includes("arjun") &&
+                    !w.email?.includes("rahul") &&
+                    !w.email?.includes("vikram") &&
+                    !w.email?.includes("priya") &&
+                    !w.email?.includes("suresh") &&
+                    !w.email?.includes("devendra") &&
+                    !w.email?.includes("ananya")
+                );
+                const updated = filtered.length > 0 ? filtered : INITIAL_WORKERS;
+                if (updated.length !== parsed.length) {
                     localStorage.setItem("h2s_workers_data", JSON.stringify(updated));
-                    return updated;
                 }
-                return parsed;
+                return updated;
             }
         }
         localStorage.setItem("h2s_workers_data", JSON.stringify(INITIAL_WORKERS));
@@ -310,7 +214,16 @@ export function getLogs() {
         if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                return parsed;
+                // Filter out logs for removed demo workers
+                const filtered = parsed.filter(l =>
+                    !REMOVED_DEMO_IDS.has(l.workerId) &&
+                    !REMOVED_DEMO_NAMES.has(l.worker)
+                );
+                const updated = filtered.length > 0 ? filtered : INITIAL_LOGS;
+                if (updated.length !== parsed.length) {
+                    localStorage.setItem("h2s_exposure_logs", JSON.stringify(updated));
+                }
+                return updated;
             }
         }
         localStorage.setItem("h2s_exposure_logs", JSON.stringify(INITIAL_LOGS));
