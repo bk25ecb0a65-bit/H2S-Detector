@@ -98,7 +98,7 @@ function Dashboard() {
                     value={stats.activeBadges}
                     description="Assigned dosimeter badges"
                     icon={<ShieldCheck className="text-emerald-400" size={24} />}
-                    onClick={() => navigate("/badges")}
+                    onClick={() => navigate("/workers")}
                     badge="Circulating"
                 />
 

@@ -5,7 +5,6 @@ import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ScanBadge from "./pages/ScanBadge.jsx";
 import Workers from "./pages/Workers.jsx";
-import Badges from "./pages/Badges.jsx";
 import ExposureHistory from "./pages/ExposureHistory.jsx";
 import Calibration from "./pages/Calibration.jsx";
 import Reports from "./pages/Reports.jsx";
@@ -25,8 +24,6 @@ function App() {
                     <Route path="/scan" element={<ScanBadge />} />
 
                     <Route path="/workers" element={<Workers />} />
-
-                    <Route path="/badges" element={<Badges />} />
 
                     <Route path="/exposure" element={<ExposureHistory />} />
 

@@ -73,7 +73,6 @@ import {
     LayoutDashboard,
     ScanLine,
     Users,
-    ShieldCheck,
     Activity,
     FlaskConical,
     FileText
@@ -129,16 +128,6 @@ function Sidebar() {
                     <Users size={20} />
                     Workers
                 </NavLink>
-
-
-                <NavLink
-                    to="/badges"
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
-                >
-                    <ShieldCheck size={20} />
-                    Badges
-                </NavLink>
-
 
                 <NavLink
                     to="/exposure"
