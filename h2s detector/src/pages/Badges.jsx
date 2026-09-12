@@ -2,20 +2,17 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
     ShieldCheck,
-    AlertTriangle,
     Search,
     RefreshCw,
-    Clock,
     X,
     CheckCircle2,
-    Calendar,
     Users,
-    Layers
+    Layers,
+    Activity
 } from "lucide-react";
 import StatCard from "../components/StatCard";
 import {
     getWorkers,
-    getBadgeStatus,
     calculateBadgeStats,
     renewWorkerBadge
 } from "../data/workers.js";
@@ -30,10 +27,9 @@ function Badges() {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
 
-    // Modal for Renewal
+    // Modal for Reassigning/Replacing Badge
     const [renewingWorker, setRenewingWorker] = useState(null);
     const [newBadgeId, setNewBadgeId] = useState("");
-    const [renewalDays, setRenewalDays] = useState(90);
     const [successMessage, setSuccessMessage] = useState(null);
 
     // Sync on focus or update
@@ -55,20 +51,15 @@ function Badges() {
 
     // Build badge items list
     const badgeItems = useMemo(() => {
-        return workers.map(worker => {
-            const badgeInfo = getBadgeStatus(worker.badgeExpiry);
-            return {
-                id: worker.id,
-                badge: worker.badge,
-                workerName: worker.name,
-                department: worker.department,
-                shift: worker.shift,
-                expiryDate: worker.badgeExpiry,
-                dose: worker.dose,
-                status: badgeInfo.status,
-                badgeInfo
-            };
-        });
+        return workers.map(worker => ({
+            id: worker.id,
+            badge: worker.badge,
+            workerName: worker.name,
+            department: worker.department,
+            shift: worker.shift,
+            dose: worker.dose,
+            status: worker.status || "Normal"
+        }));
     }, [workers]);
 
     const filteredBadges = useMemo(() => {
@@ -78,14 +69,7 @@ function Badges() {
                 item.workerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.department.toLowerCase().includes(searchQuery.toLowerCase());
 
-            let matchesStatus = true;
-            if (statusFilter === "Active") {
-                matchesStatus = item.status === "Active" || item.status === "Expiring Soon";
-            } else if (statusFilter === "Expired") {
-                matchesStatus = item.status === "Expired";
-            } else if (statusFilter === "Expiring Soon") {
-                matchesStatus = item.status === "Expiring Soon";
-            }
+            const matchesStatus = statusFilter === "All" || item.status === statusFilter;
 
             return matchesSearch && matchesStatus;
         });
@@ -94,16 +78,15 @@ function Badges() {
     const openRenewModal = (item) => {
         setRenewingWorker(item);
         setNewBadgeId(generateReplacementBadgeId(item.id, workers.length));
-        setRenewalDays(90);
     };
 
     const confirmRenewal = (e) => {
         e.preventDefault();
         if (!renewingWorker) return;
 
-        const updated = renewWorkerBadge(renewingWorker.id, newBadgeId, parseInt(renewalDays) || 90);
+        const updated = renewWorkerBadge(renewingWorker.id, newBadgeId);
         setWorkers(updated);
-        setSuccessMessage(`✓ Badge for ${renewingWorker.workerName} successfully replaced with ${newBadgeId}.`);
+        setSuccessMessage(`✓ Badge for ${renewingWorker.workerName} successfully updated to ${newBadgeId}.`);
         setRenewingWorker(null);
 
         setTimeout(() => setSuccessMessage(null), 4000);
@@ -114,9 +97,9 @@ function Badges() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Badge Inventory & Validity</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-white">Badge Inventory & Assignments</h1>
                     <p className="text-slate-400 mt-1 text-sm">
-                        Track dosimeter badge assignments, active lifecycles, and required strip replacements.
+                        Track dosimeter badge assignments across personnel, active departments, and cumulative H₂S exposure.
                     </p>
                 </div>
                 <Link
@@ -146,31 +129,29 @@ function Badges() {
                 />
 
                 <StatCard
-                    title="Active Badges"
+                    title="Active Dosimeters"
                     value={stats.activeBadges}
-                    description="Within validity inspection period"
+                    description="Assigned dosimeter strips"
                     icon={<ShieldCheck size={24} className="text-emerald-400" />}
-                    onClick={() => setStatusFilter("Active")}
-                    badge="Valid"
+                    badge="Active"
                 />
 
                 <StatCard
-                    title="Expired Badges"
-                    value={stats.expiredBadges}
-                    description="Immediate strip replacement required"
-                    icon={<AlertTriangle size={24} className={stats.expiredBadges > 0 ? "text-red-400" : "text-slate-400"} />}
-                    onClick={() => setStatusFilter("Expired")}
-                    alert={stats.expiredBadges > 0}
-                    badge={stats.expiredBadges > 0 ? "Action Required" : "0 Expired"}
+                    title="Safe Exposure"
+                    value={stats.normalWorkers}
+                    description="Dose within normal limits (<18 ppm·hr)"
+                    icon={<ShieldCheck size={24} className="text-emerald-400" />}
+                    onClick={() => setStatusFilter("Normal")}
+                    badge={stats.atRiskWorkers > 0 ? `${stats.atRiskWorkers} At Risk` : "All Safe"}
                 />
 
                 <StatCard
-                    title="Expiring Soon (<30d)"
-                    value={stats.expiringSoonBadges}
-                    description="Scheduled for renewal this month"
-                    icon={<Clock size={24} className="text-amber-400" />}
-                    onClick={() => setStatusFilter("Expiring Soon")}
-                    badge="Renewal"
+                    title="At-Risk Personnel"
+                    value={stats.atRiskWorkers}
+                    description="Approaching safety limit (>=18 ppm·hr)"
+                    icon={<Activity size={24} className="text-amber-400" />}
+                    onClick={() => setStatusFilter("Review")}
+                    badge={stats.atRiskWorkers > 0 ? "Monitor" : "Safe"}
                 />
             </div>
 
@@ -197,28 +178,28 @@ function Badges() {
                         All ({badgeItems.length})
                     </button>
                     <button
-                        onClick={() => setStatusFilter("Active")}
+                        onClick={() => setStatusFilter("Normal")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                            statusFilter === "Active" ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-emerald-400 hover:bg-slate-700"
+                            statusFilter === "Normal" ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-emerald-400 hover:bg-slate-700"
                         }`}
                     >
-                        Active ({stats.activeBadges})
+                        Normal ({stats.normalWorkers})
                     </button>
                     <button
-                        onClick={() => setStatusFilter("Expired")}
+                        onClick={() => setStatusFilter("Review")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                            statusFilter === "Expired" ? "bg-red-500 text-white" : "bg-slate-800 text-red-400 hover:bg-slate-700"
+                            statusFilter === "Review" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-amber-300 hover:bg-slate-700"
                         }`}
                     >
-                        Expired ({stats.expiredBadges})
+                        Review ({stats.reviewWorkers})
                     </button>
                     <button
-                        onClick={() => setStatusFilter("Expiring Soon")}
+                        onClick={() => setStatusFilter("Warning")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                            statusFilter === "Expiring Soon" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-amber-300 hover:bg-slate-700"
+                            statusFilter === "Warning" ? "bg-red-500 text-white" : "bg-slate-800 text-red-400 hover:bg-slate-700"
                         }`}
                     >
-                        Expiring Soon ({stats.expiringSoonBadges})
+                        Warning ({stats.warningWorkers})
                     </button>
                 </div>
             </div>
@@ -230,18 +211,17 @@ function Badges() {
                         <thead className="bg-slate-950/60 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                             <tr>
                                 <th className="py-3.5 px-5">Badge ID</th>
-                                <th className="py-3.5 px-5">Validity Status</th>
                                 <th className="py-3.5 px-5">Assigned Worker</th>
                                 <th className="py-3.5 px-5">Department & Shift</th>
-                                <th className="py-3.5 px-5">Expiration Date</th>
                                 <th className="py-3.5 px-5">Cumulative Dose</th>
+                                <th className="py-3.5 px-5">Exposure Status</th>
                                 <th className="py-3.5 px-5 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60 text-slate-300">
                             {filteredBadges.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="py-12 text-center text-slate-500">
+                                    <td colSpan="6" className="py-12 text-center text-slate-500">
                                         No badges match the selected filter criteria.
                                     </td>
                                 </tr>
@@ -252,18 +232,6 @@ function Badges() {
                                         <td className="py-4 px-5">
                                             <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-sky-300">
                                                 {item.badge}
-                                            </span>
-                                        </td>
-
-                                        {/* Status */}
-                                        <td className="py-4 px-5">
-                                            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold inline-flex items-center gap-1.5 ${item.badgeInfo.badgeClass}`}>
-                                                {item.badgeInfo.status === "Expired" ? (
-                                                    <AlertTriangle size={12} />
-                                                ) : (
-                                                    <ShieldCheck size={12} />
-                                                )}
-                                                {item.badgeInfo.label}
                                             </span>
                                         </td>
 
@@ -279,30 +247,34 @@ function Badges() {
                                             <div className="text-xs text-slate-500">{item.shift} Shift</div>
                                         </td>
 
-                                        {/* Expiration Date */}
-                                        <td className="py-4 px-5 font-mono text-xs">
-                                            <div className="flex items-center gap-1.5 text-slate-300">
-                                                <Calendar size={13} className="text-slate-500" />
-                                                <span>{item.expiryDate || "Not set"}</span>
-                                            </div>
-                                        </td>
-
                                         {/* Dose */}
                                         <td className="py-4 px-5 font-mono text-xs font-bold text-slate-200">
                                             {item.dose} <span className="text-slate-500 font-normal">ppm·hr</span>
+                                        </td>
+
+                                        {/* Exposure Status */}
+                                        <td className="py-4 px-5">
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 ${
+                                                item.status === "Normal" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                                item.status === "Review" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                                "bg-red-500/10 text-red-400 border border-red-500/20"
+                                            }`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                                    item.status === "Normal" ? "bg-emerald-400" :
+                                                    item.status === "Review" ? "bg-amber-400" :
+                                                    "bg-red-400 animate-ping"
+                                                }`} />
+                                                {item.status}
+                                            </span>
                                         </td>
 
                                         {/* Actions */}
                                         <td className="py-4 px-5 text-right">
                                             <button
                                                 onClick={() => openRenewModal(item)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5 ${
-                                                    item.badgeInfo.status === "Expired"
-                                                        ? "bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/20"
-                                                        : "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
-                                                }`}
+                                                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
                                             >
-                                                <RefreshCw size={13} /> Replace Strip
+                                                <RefreshCw size={13} /> Replace Badge
                                             </button>
                                         </td>
                                     </tr>
@@ -313,7 +285,7 @@ function Badges() {
                 </div>
             </div>
 
-            {/* Replace / Renew Badge Modal */}
+            {/* Replace / Reassign Badge Modal */}
             {renewingWorker && (
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -331,7 +303,7 @@ function Badges() {
                             <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs">
                                 <span className="text-slate-500 block">Worker:</span>
                                 <span className="font-bold text-white text-sm">{renewingWorker.workerName} ({renewingWorker.id})</span>
-                                <span className="text-slate-400 block mt-0.5">Current Badge: {renewingWorker.badge} (Expired: {renewingWorker.expiryDate})</span>
+                                <span className="text-slate-400 block mt-0.5">Current Assigned Badge: {renewingWorker.badge}</span>
                             </div>
 
                             <div>
@@ -347,23 +319,6 @@ function Badges() {
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-400 mb-1">
-                                    Validity Extension
-                                </label>
-                                <select
-                                    value={renewalDays}
-                                    onChange={(e) => setRenewalDays(e.target.value)}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
-                                >
-                                    <option value="30">30 Days</option>
-                                    <option value="60">60 Days</option>
-                                    <option value="90">90 Days (Standard Quarter)</option>
-                                    <option value="180">180 Days (Half Year)</option>
-                                    <option value="365">1 Year</option>
-                                </select>
-                            </div>
-
                             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                                 <button
                                     type="button"
@@ -376,7 +331,7 @@ function Badges() {
                                     type="submit"
                                     className="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg transition shadow-md shadow-sky-500/20"
                                 >
-                                    Issue Replacement
+                                    Update Badge
                                 </button>
                             </div>
                         </form>

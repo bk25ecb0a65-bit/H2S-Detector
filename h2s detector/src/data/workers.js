@@ -7,7 +7,6 @@ export const INITIAL_WORKERS = [
         email: "ravi.kumar@petrogas.com",
         phone: "+91 98451 22341",
         badge: "H2S-00431",
-        badgeExpiry: "2026-11-30", // Active (> 30 days)
         department: "Refining Unit B",
         role: "Senior Plant Operator",
         shift: "Morning",
@@ -59,54 +58,12 @@ export const INITIAL_LOGS = [
 ];
 
 /**
- * Calculates badge validity status based on expiration date.
- * Returns: { status: 'Active' | 'Expired' | 'Expiring Soon', label, daysLeft, color, badgeClass }
+ * Badge status helper (Normal / Active)
  */
-export function getBadgeStatus(expiryDate) {
-    if (!expiryDate) {
-        return {
-            status: "Active",
-            label: "Active",
-            daysLeft: null,
-            color: "emerald",
-            badgeClass: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-        };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const expiry = new Date(expiryDate);
-    expiry.setHours(0, 0, 0, 0);
-
-    const diffTime = expiry.getTime() - today.getTime();
-    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (daysLeft < 0) {
-        return {
-            status: "Expired",
-            label: "Expired",
-            daysLeft,
-            daysPassed: Math.abs(daysLeft),
-            color: "red",
-            badgeClass: "bg-red-500/15 text-red-400 border border-red-500/30"
-        };
-    }
-
-    if (daysLeft <= 30) {
-        return {
-            status: "Expiring Soon",
-            label: daysLeft === 0 ? "Expires Today" : `Expires in ${daysLeft}d`,
-            daysLeft,
-            color: "amber",
-            badgeClass: "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-        };
-    }
-
+export function getBadgeStatus() {
     return {
         status: "Active",
         label: "Active",
-        daysLeft,
         color: "emerald",
         badgeClass: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
     };
@@ -116,25 +73,14 @@ export function getBadgeStatus(expiryDate) {
  * Aggregates workforce and badge status metrics
  */
 export function calculateBadgeStats(workers = []) {
-    let totalWorkers = workers.length;
+    const totalWorkers = workers.length;
     let activeBadges = 0;
-    let expiredBadges = 0;
-    let expiringSoonBadges = 0;
     let normalWorkers = 0;
     let reviewWorkers = 0;
     let warningWorkers = 0;
 
     workers.forEach(w => {
-        const badgeInfo = getBadgeStatus(w.badgeExpiry);
-        if (badgeInfo.status === "Expired") {
-            expiredBadges++;
-        } else {
-            activeBadges++;
-            if (badgeInfo.status === "Expiring Soon") {
-                expiringSoonBadges++;
-            }
-        }
-
+        if (w.badge) activeBadges++;
         if (w.status === "Warning") warningWorkers++;
         else if (w.status === "Review") reviewWorkers++;
         else normalWorkers++;
@@ -143,8 +89,8 @@ export function calculateBadgeStats(workers = []) {
     return {
         totalWorkers,
         activeBadges,
-        expiredBadges,
-        expiringSoonBadges,
+        expiredBadges: 0,
+        expiringSoonBadges: 0,
         normalWorkers,
         reviewWorkers,
         warningWorkers,
@@ -235,20 +181,15 @@ export function saveLogs(logs) {
 }
 
 /**
- * Helper to replace or renew a worker's badge with a new badge ID and validity period
+ * Helper to reassign or replace a worker's badge ID
  */
-export function renewWorkerBadge(workerId, newBadgeId, daysValid = 90) {
+export function renewWorkerBadge(workerId, newBadgeId) {
     const workers = getWorkers();
-    const expiryDate = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0];
-
     const updated = workers.map(w => {
         if (w.id === workerId) {
             return {
                 ...w,
-                badge: newBadgeId || w.badge,
-                badgeExpiry: expiryDate
+                badge: newBadgeId || w.badge
             };
         }
         return w;

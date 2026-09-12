@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Search, ShieldCheck, AlertTriangle, Clock } from "lucide-react";
-import { getBadgeStatus, getWorkers, getLogs } from "../data/workers.js";
+import { ArrowRight, Search, Clock } from "lucide-react";
+import { getWorkers, getLogs } from "../data/workers.js";
 
 function RecentExposure({ workers: propWorkers, logs: propLogs }) {
     const [searchQuery, setSearchQuery] = useState("");
@@ -16,9 +16,7 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
 
     // Build recent exposure list from actual workers and logs
     const exposureItems = useMemo(() => {
-        // Map workers with their badge status
         return workers.map(worker => {
-            const badgeInfo = getBadgeStatus(worker.badgeExpiry);
             // Find most recent log if available
             const workerLog = logs.find(l => l.workerId === worker.id || l.badge === worker.badge);
 
@@ -26,8 +24,6 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                 id: worker.id,
                 worker: worker.name,
                 badge: worker.badge,
-                badgeExpiry: worker.badgeExpiry,
-                badgeStatus: badgeInfo,
                 department: worker.department,
                 shift: worker.shift,
                 dose: worker.dose,
@@ -56,7 +52,7 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                         Recent Exposure Measurements
                     </h2>
                     <p className="text-xs text-slate-400 mt-1">
-                        Active personnel dosimeter readings and badge validity tracking
+                        Active personnel dosimeter readings and exposure status
                     </p>
                 </div>
 
@@ -85,7 +81,7 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                     <thead>
                         <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                             <th className="py-3 px-3">Worker</th>
-                            <th className="py-3 px-3">Badge ID & Status</th>
+                            <th className="py-3 px-3">Badge ID</th>
                             <th className="py-3 px-3">Shift & Dept</th>
                             <th className="py-3 px-3">Cumulative Dose</th>
                             <th className="py-3 px-3">Exposure Status</th>
@@ -109,7 +105,7 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                                     <td className="py-3.5 px-3">
                                         <div className="flex items-center gap-2.5">
                                             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center font-bold text-white text-[11px] shrink-0">
-                                                {item.worker.split(" ").map(n => n[0]).join("")}
+                                                {(item.worker || "Worker").trim().split(/\s+/).map(n => n[0]).filter(Boolean).join("").toUpperCase().slice(0, 2) || "W"}
                                             </div>
                                             <div>
                                                 <div className="font-semibold text-white">{item.worker}</div>
@@ -118,21 +114,11 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                                         </div>
                                     </td>
 
-                                    {/* Badge ID + Badge Status (Active / Expired pill) */}
+                                    {/* Badge ID */}
                                     <td className="py-3.5 px-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-sky-300">
-                                                {item.badge}
-                                            </span>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold inline-flex items-center gap-1 ${item.badgeStatus.badgeClass}`}>
-                                                {item.badgeStatus.status === "Expired" ? (
-                                                    <AlertTriangle size={10} />
-                                                ) : (
-                                                    <ShieldCheck size={10} />
-                                                )}
-                                                {item.badgeStatus.label}
-                                            </span>
-                                        </div>
+                                        <span className="font-mono text-xs px-2.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-sky-300 font-semibold">
+                                            {item.badge}
+                                        </span>
                                     </td>
 
                                     {/* Shift & Dept */}

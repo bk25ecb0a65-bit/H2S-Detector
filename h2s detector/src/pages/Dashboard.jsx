@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
     Users,
     ShieldCheck,
-    AlertTriangle,
     ScanLine,
-    ArrowRight,
     UserPlus
 } from "lucide-react";
 import ExposureChart from "../components/ExposureChart";
@@ -14,8 +12,7 @@ import RecentExposure from "../components/RecentExposure";
 import {
     getWorkers,
     getLogs,
-    calculateBadgeStats,
-    getBadgeStatus
+    calculateBadgeStats
 } from "../data/workers.js";
 
 function Dashboard() {
@@ -56,11 +53,6 @@ function Dashboard() {
         return count > 0 ? count : logs.length;
     }, [logs]);
 
-    // List of workers with expired badges
-    const expiredWorkerList = useMemo(() => {
-        return workers.filter(w => getBadgeStatus(w.badgeExpiry).status === "Expired");
-    }, [workers]);
-
     return (
         <div className="space-y-6">
             {/* Header with Title & Quick Actions */}
@@ -70,7 +62,7 @@ function Dashboard() {
                         H₂S Exposure Dashboard
                     </h1>
                     <p className="text-slate-400 mt-1 text-sm">
-                        Live workplace dosimeter monitoring, badge validity, and occupational exposure limits.
+                        Live workplace dosimeter monitoring and occupational exposure limits.
                     </p>
                 </div>
 
@@ -90,36 +82,6 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Expired Badges Safety Action Alert Banner */}
-            {stats.expiredBadges > 0 && (
-                <div className="bg-red-950/40 border border-red-800/80 rounded-xl p-4 text-red-300 shadow-lg shadow-red-950/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                        <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={20} />
-                        <div>
-                            <div className="font-bold text-sm text-red-200">
-                                Safety Alert: {stats.expiredBadges} Badge{stats.expiredBadges > 1 ? "s" : ""} Expired & Require Immediate Replacement
-                            </div>
-                            <p className="text-xs text-red-300/90 mt-0.5">
-                                Workers with expired badges must not enter operational plant zones without strip replacement.
-                            </p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {expiredWorkerList.map(w => (
-                                    <span key={w.id} className="text-[11px] px-2 py-0.5 rounded bg-red-900/60 border border-red-700/60 font-mono text-red-200">
-                                        {w.name} ({w.badge} · Exp: {w.badgeExpiry})
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => navigate("/workers")}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs transition shrink-0 inline-flex items-center gap-1.5 self-start md:self-auto"
-                    >
-                        Replace in Workers Dashboard <ArrowRight size={14} />
-                    </button>
-                </div>
-            )}
-
             {/* Dynamic KPI Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                 <StatCard
@@ -134,24 +96,19 @@ function Dashboard() {
                 <StatCard
                     title="Active Badges"
                     value={stats.activeBadges}
-                    description={
-                        stats.expiringSoonBadges > 0
-                            ? `${stats.expiringSoonBadges} badge(s) expiring within 30 days`
-                            : "All assigned badges currently valid"
-                    }
+                    description="Assigned dosimeter badges"
                     icon={<ShieldCheck className="text-emerald-400" size={24} />}
                     onClick={() => navigate("/badges")}
-                    badge="Valid"
+                    badge="Circulating"
                 />
 
                 <StatCard
-                    title="Expired Badges"
-                    value={stats.expiredBadges}
-                    description="Require immediate replacement"
-                    icon={<AlertTriangle className={stats.expiredBadges > 0 ? "text-red-400" : "text-slate-400"} size={24} />}
+                    title="Safe Personnel"
+                    value={stats.normalWorkers}
+                    description="Cumulative dose < 18 ppm·hr"
+                    icon={<ShieldCheck className="text-emerald-400" size={24} />}
                     onClick={() => navigate("/workers")}
-                    alert={stats.expiredBadges > 0}
-                    badge={stats.expiredBadges > 0 ? "Action Required" : "0 Expired"}
+                    badge={stats.atRiskWorkers > 0 ? `${stats.atRiskWorkers} At Risk` : "All Safe"}
                 />
 
                 <StatCard
@@ -164,12 +121,12 @@ function Dashboard() {
                 />
             </div>
 
-            {/* Exposure Trend Chart */}
+            {/* Worker Exposure Bar Chart */}
             <div className="mt-6">
-                <ExposureChart workers={workers} logs={logs} />
+                <ExposureChart workers={workers} />
             </div>
 
-            {/* Recent Exposure Measurements Table with Live Badge Validity */}
+            {/* Recent Exposure Measurements Table */}
             <RecentExposure workers={workers} logs={logs} />
         </div>
     );
