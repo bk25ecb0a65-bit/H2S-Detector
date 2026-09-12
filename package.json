@@ -1,0 +1,10 @@
+{
+  "name": "h2s-detector-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix \"h2s detector\" run dev",
+    "build": "npm --prefix \"h2s detector\" run build",
+    "preview": "npm --prefix \"h2s detector\" run preview"
+  }
+}
