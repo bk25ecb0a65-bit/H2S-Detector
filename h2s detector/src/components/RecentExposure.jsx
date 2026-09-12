@@ -132,16 +132,16 @@ function RecentExposure({ workers: propWorkers, logs: propLogs }) {
                                         <div className="w-28">
                                             <div className="flex justify-between text-[11px] mb-1 font-mono">
                                                 <span className="font-semibold text-white">{item.dose}</span>
-                                                <span className="text-slate-500">/ 30 ppm·hr</span>
+                                                <span className="text-slate-500">/ 10 ppm·hr</span>
                                             </div>
                                             <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full rounded-full ${
-                                                        item.dose >= 25 ? "bg-red-500" :
-                                                        item.dose >= 18 ? "bg-amber-400" :
+                                                        item.dose >= 10 ? "bg-red-500" :
+                                                        item.dose >= 7 ? "bg-amber-400" :
                                                         "bg-emerald-400"
                                                     }`}
-                                                    style={{ width: `${Math.min(100, (item.dose / 30) * 100)}%` }}
+                                                    style={{ width: `${Math.min(100, (item.dose / 10) * 100)}%` }}
                                                 />
                                             </div>
                                         </div>

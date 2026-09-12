@@ -10,7 +10,7 @@ export const INITIAL_WORKERS = [
         department: "Refining Unit B",
         role: "Senior Plant Operator",
         shift: "Morning",
-        dose: 14.3,
+        dose: 4.2,
         status: "Normal",
         lastScan: "Today, 10:30 AM"
     }
@@ -36,8 +36,8 @@ export const INITIAL_LOGS = [
         location: "Refining Unit B - Flare Header",
         shift: "Morning",
         duration: "5 min scan",
-        concentration: "2 ppm",
-        dose: 14.3,
+        concentration: "1.0 ppm",
+        dose: 4.2,
         status: "Normal",
         notes: "Routine shift inspection. Ventilation active."
     },
@@ -50,10 +50,24 @@ export const INITIAL_LOGS = [
         location: "Refining Unit B - Desulfurization",
         shift: "Morning",
         duration: "5 min scan",
-        concentration: "1 ppm",
-        dose: 11.2,
+        concentration: "0.3 ppm",
+        dose: 3.1,
         status: "Normal",
         notes: "Catalyst changeover inspection."
+    },
+    {
+        id: "EXP-8895",
+        timestamp: "2026-09-07 09:15",
+        worker: "Ravi Kumar",
+        workerId: "W-101",
+        badge: "H2S-00431",
+        location: "Refining Unit B - Control Station",
+        shift: "Morning",
+        duration: "5 min scan",
+        concentration: "~100–500 ppb",
+        dose: 1.8,
+        status: "Normal",
+        notes: "Baseline shift startup monitoring."
     }
 ];
 
@@ -148,26 +162,39 @@ export function saveWorkers(workers) {
     }
 }
 
-export function getLogs() {
+export function getLogs(customWorkers) {
     try {
+        const workers = customWorkers || getWorkers();
+        const activeNames = new Set(workers.map(w => (w.name || "").trim().toLowerCase()));
+
         const saved = localStorage.getItem("h2s_exposure_logs");
+        let parsedLogs = [];
         if (saved !== null) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
-                // Filter out logs for removed demo workers
-                const filtered = parsed.filter(l =>
-                    !REMOVED_DEMO_NAMES.has(l.worker)
-                );
-                if (filtered.length !== parsed.length) {
-                    localStorage.setItem("h2s_exposure_logs", JSON.stringify(filtered));
-                }
-                return filtered;
+                parsedLogs = parsed;
+            }
+        } else {
+            // Only use INITIAL_LOGS if Ravi Kumar is actually in the active workers list
+            if (activeNames.has("ravi kumar")) {
+                parsedLogs = INITIAL_LOGS;
             }
         }
-        localStorage.setItem("h2s_exposure_logs", JSON.stringify(INITIAL_LOGS));
-        return INITIAL_LOGS;
+
+        // Strictly keep logs ONLY for workers whose name exists in the active workers list
+        const filtered = parsedLogs.filter(l => {
+            if (!l || !l.worker || REMOVED_DEMO_NAMES.has(l.worker)) return false;
+            const wName = l.worker.trim().toLowerCase();
+            return activeNames.has(wName);
+        });
+
+        if (saved !== null && filtered.length !== parsedLogs.length) {
+            localStorage.setItem("h2s_exposure_logs", JSON.stringify(filtered));
+        }
+
+        return filtered;
     } catch {
-        return INITIAL_LOGS;
+        return [];
     }
 }
 
@@ -197,4 +224,30 @@ export function renewWorkerBadge(workerId, newBadgeId) {
 
     saveWorkers(updated);
     return updated;
+}
+
+/**
+ * Purges any exposure logs for workers not currently in the workers list
+ */
+export function purgeOrphanedLogs() {
+    try {
+        const workers = getWorkers();
+        const activeNames = new Set(workers.map(w => (w.name || "").trim().toLowerCase()));
+        const saved = localStorage.getItem("h2s_exposure_logs");
+        if (saved !== null) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                const cleaned = parsed.filter(l => l && l.worker && activeNames.has(l.worker.trim().toLowerCase()));
+                if (cleaned.length !== parsed.length) {
+                    localStorage.setItem("h2s_exposure_logs", JSON.stringify(cleaned));
+                    window.dispatchEvent(new CustomEvent("h2s_logs_updated", { detail: cleaned }));
+                    return cleaned;
+                }
+                return parsed;
+            }
+        }
+        return [];
+    } catch {
+        return [];
+    }
 }

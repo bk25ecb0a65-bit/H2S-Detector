@@ -7,7 +7,6 @@ import ScanBadge from "./pages/ScanBadge.jsx";
 import Workers from "./pages/Workers.jsx";
 import ExposureHistory from "./pages/ExposureHistory.jsx";
 import Calibration from "./pages/Calibration.jsx";
-import Reports from "./pages/Reports.jsx";
 
 function App() {
 
@@ -28,8 +27,6 @@ function App() {
                     <Route path="/exposure" element={<ExposureHistory />} />
 
                     <Route path="/calibration" element={<Calibration />} />
-
-                    <Route path="/reports" element={<Reports />} />
 
                 </Route>
 

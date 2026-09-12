@@ -74,8 +74,7 @@ import {
     ScanLine,
     Users,
     Activity,
-    FlaskConical,
-    FileText
+    FlaskConical
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -144,15 +143,6 @@ function Sidebar() {
                 >
                     <FlaskConical size={20} />
                     Calibration
-                </NavLink>
-
-
-                <NavLink
-                    to="/reports"
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
-                >
-                    <FileText size={20} />
-                    Reports
                 </NavLink>
 
             </nav>

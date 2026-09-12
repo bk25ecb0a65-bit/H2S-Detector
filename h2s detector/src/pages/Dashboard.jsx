@@ -105,7 +105,7 @@ function Dashboard() {
                 <StatCard
                     title="Safe Personnel"
                     value={stats.normalWorkers}
-                    description="Cumulative dose < 18 ppm·hr"
+                    description="Cumulative dose < 7 ppm·hr"
                     icon={<ShieldCheck className="text-emerald-400" size={24} />}
                     onClick={() => navigate("/workers")}
                     badge={stats.atRiskWorkers > 0 ? `${stats.atRiskWorkers} At Risk` : "All Safe"}

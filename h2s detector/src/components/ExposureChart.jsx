@@ -18,7 +18,7 @@ function WorkerCustomTooltip({ active, payload }) {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
     const dose = data.dose;
-    const isOverLimit = dose >= 20;
+    const isOverLimit = dose >= 10;
 
     return (
         <div className="bg-slate-950/95 border border-slate-700 p-3.5 rounded-xl shadow-2xl text-xs space-y-2 min-w-[200px]">
@@ -55,16 +55,16 @@ function WorkerCustomTooltip({ active, payload }) {
             <div className="pt-1">
                 <div className="flex justify-between text-[10px] text-slate-400 mb-1">
                     <span>Threshold Usage</span>
-                    <span>{Math.round((dose / 20) * 100)}% of 20 ppm·hr</span>
+                    <span>{Math.round((dose / 10) * 100)}% of 10 ppm·hr</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div
                         className={`h-full rounded-full transition-all ${
-                            dose >= 25 ? "bg-red-500" :
-                            dose >= 18 ? "bg-amber-400" :
+                            dose >= 10 ? "bg-red-500" :
+                            dose >= 7 ? "bg-amber-400" :
                             "bg-emerald-400"
                         }`}
-                        style={{ width: `${Math.min(100, (dose / 20) * 100)}%` }}
+                        style={{ width: `${Math.min(100, (dose / 10) * 100)}%` }}
                     />
                 </div>
             </div>
@@ -72,7 +72,7 @@ function WorkerCustomTooltip({ active, payload }) {
             {isOverLimit && (
                 <div className="flex items-center gap-1.5 text-red-400 text-[11px] font-semibold pt-1">
                     <AlertTriangle size={12} className="shrink-0" />
-                    <span>Exceeds OSHA Action Limit (20 ppm·hr)</span>
+                    <span>Exceeds OSHA Action Limit (10 ppm·hr)</span>
                 </div>
             )}
         </div>
@@ -93,7 +93,7 @@ function ExposureChart({ workers: propWorkers }) {
         const sum = doses.reduce((a, b) => a + b, 0);
         const avg = Number((sum / doses.length).toFixed(1));
         const peak = Number(Math.max(...doses, 0).toFixed(1));
-        const atRisk = workers.filter(w => (parseFloat(w.dose) || 0) >= 18).length;
+        const atRisk = workers.filter(w => (parseFloat(w.dose) || 0) >= 7).length;
         return {
             totalWorkers: workers.length,
             avgDose: avg,
@@ -108,9 +108,9 @@ function ExposureChart({ workers: propWorkers }) {
         return workers.map(w => {
             const dose = parseFloat(w.dose) || 0;
             let barColor = "#38bdf8"; // sky blue
-            if (dose >= 25) {
+            if (dose >= 10) {
                 barColor = "#ef4444"; // red
-            } else if (dose >= 18) {
+            } else if (dose >= 7) {
                 barColor = "#f59e0b"; // amber
             }
             return {
@@ -121,13 +121,13 @@ function ExposureChart({ workers: propWorkers }) {
                 department: w.department,
                 shift: w.shift,
                 dose,
-                status: w.status || (dose >= 25 ? "Warning" : dose >= 18 ? "Review" : "Normal"),
+                status: w.status || (dose >= 10 ? "Warning" : dose >= 7 ? "Review" : "Normal"),
                 barColor
             };
         });
     }, [workers]);
 
-    const yMax = Math.max(30, peakDose + 5);
+    const yMax = Math.max(15, peakDose + 2);
 
     return (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
@@ -143,7 +143,7 @@ function ExposureChart({ workers: propWorkers }) {
                         </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-1">
-                        Live dosimeter exposure readings calibrated against OSHA 20 ppm·hr action threshold
+                        Live dosimeter exposure readings calibrated against OSHA 10 ppm·hr action threshold
                     </p>
                 </div>
 
@@ -205,24 +205,24 @@ function ExposureChart({ workers: propWorkers }) {
                             />
                             <Tooltip content={<WorkerCustomTooltip />} />
                             <ReferenceLine
-                                y={20}
+                                y={10}
                                 stroke="#ef4444"
                                 strokeDasharray="4 4"
                                 label={{
-                                    value: "OSHA 20 ppm·hr Action Limit",
+                                    value: "OSHA 10 ppm·hr Action Limit",
                                     fill: "#f87171",
                                     fontSize: 10,
                                     position: "top"
                                 }}
                             />
                             <ReferenceLine
-                                y={10}
-                                stroke="#10b981"
+                                y={7}
+                                stroke="#f59e0b"
                                 strokeDasharray="3 3"
-                                strokeOpacity={0.5}
+                                strokeOpacity={0.6}
                                 label={{
-                                    value: "TWA 10 ppm Target",
-                                    fill: "#34d399",
+                                    value: "Advisory 7 ppm·hr Target",
+                                    fill: "#fbbf24",
                                     fontSize: 10,
                                     position: "insideBottomLeft"
                                 }}

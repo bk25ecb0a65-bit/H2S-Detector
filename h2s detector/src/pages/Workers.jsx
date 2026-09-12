@@ -21,7 +21,9 @@ import {
     getWorkers,
     saveWorkers,
     calculateBadgeStats,
-    resetWorkersToDefault
+    resetWorkersToDefault,
+    saveLogs,
+    INITIAL_LOGS
 } from "../data/workers.js";
 
 function Workers() {
@@ -132,8 +134,8 @@ function Workers() {
         e.preventDefault();
         const doseNum = parseFloat(formData.dose) || 0;
         let status = "Normal";
-        if (doseNum >= 25) status = "Warning";
-        else if (doseNum >= 18) status = "Review";
+        if (doseNum >= 10) status = "Warning";
+        else if (doseNum >= 7) status = "Review";
 
         let updatedList;
         if (editingWorker) {
@@ -176,10 +178,24 @@ function Workers() {
         if (!workerToDelete) return;
         const deletedName = workerToDelete.name;
         const deletedId = workerToDelete.id;
+        const deletedBadge = workerToDelete.badge;
 
         const updated = workers.filter(w => w.id !== deletedId);
         setWorkers(updated);
         saveWorkers(updated);
+
+        // Also purge logs for this deleted worker from exposure history
+        try {
+            const rawLogs = JSON.parse(localStorage.getItem("h2s_exposure_logs") || "[]");
+            const updatedLogs = rawLogs.filter(l =>
+                l.workerId !== deletedId &&
+                l.worker !== deletedName &&
+                (!deletedBadge || l.badge !== deletedBadge)
+            );
+            saveLogs(updatedLogs);
+        } catch (e) {
+            console.error("Failed to clean up logs on worker delete:", e);
+        }
 
         if (selectedWorkerDetails?.id === deletedId) {
             setSelectedWorkerDetails(null);
@@ -195,6 +211,7 @@ function Workers() {
         if (window.confirm("Reset workforce to standard default profile (1 worker)? Any custom workers will be replaced.")) {
             const defaults = resetWorkersToDefault();
             setWorkers(defaults);
+            saveLogs(INITIAL_LOGS);
             setSelectedWorkerDetails(null);
             setToastMessage("✓ Workforce reset to 1 standard default worker (Ravi Kumar).");
             setTimeout(() => setToastMessage(null), 4000);
@@ -205,6 +222,7 @@ function Workers() {
     const handleClearAll = () => {
         if (window.confirm("Are you sure you want to remove all workers from the registry?")) {
             saveWorkers([]);
+            saveLogs([]);
             setWorkers([]);
             setSelectedWorkerDetails(null);
             setToastMessage("✓ All worker records cleared.");
@@ -277,7 +295,7 @@ function Workers() {
                 <StatCard
                     title="Safe Personnel"
                     value={stats.normalWorkers}
-                    description="Cumulative dose < 18 ppm·hr"
+                    description="Cumulative dose < 7 ppm·hr"
                     icon={<ShieldCheck size={24} className="text-emerald-400" />}
                     badge={stats.atRiskWorkers > 0 ? `${stats.atRiskWorkers} At Risk` : "All Safe"}
                 />
@@ -285,7 +303,7 @@ function Workers() {
                 <StatCard
                     title="At-Risk / In Review"
                     value={stats.atRiskWorkers}
-                    description="Approaching safety limit (>18 ppm·hr)"
+                    description="Approaching safety limit (≥7 ppm·hr)"
                     icon={<Activity size={24} className="text-amber-400" />}
                     onClick={() => setStatusFilter("Review")}
                     badge={stats.atRiskWorkers > 0 ? "Monitor" : "Safe"}
@@ -342,9 +360,9 @@ function Workers() {
                         className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500 cursor-pointer"
                     >
                         <option value="All">All Dose Statuses</option>
-                        <option value="Normal">Normal (&lt;18)</option>
-                        <option value="Review">Review (18-25)</option>
-                        <option value="Warning">Warning (&gt;25)</option>
+                        <option value="Normal">Normal (&lt;7)</option>
+                        <option value="Review">Review (7-10)</option>
+                        <option value="Warning">Warning (&ge;10)</option>
                     </select>
 
                     {/* Reset Filters */}
@@ -437,16 +455,16 @@ function Workers() {
                                             <div className="w-32">
                                                 <div className="flex justify-between text-xs mb-1 font-mono">
                                                     <span className="font-semibold text-slate-200">{worker.dose}</span>
-                                                    <span className="text-slate-500">/ 30 ppm·hr</span>
+                                                    <span className="text-slate-500">/ 10 ppm·hr</span>
                                                 </div>
                                                 <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                                                     <div
                                                         className={`h-full rounded-full ${
-                                                            worker.dose >= 25 ? "bg-red-500" :
-                                                            worker.dose >= 18 ? "bg-amber-400" :
+                                                            worker.dose >= 10 ? "bg-red-500" :
+                                                            worker.dose >= 7 ? "bg-amber-400" :
                                                             "bg-emerald-400"
                                                         }`}
-                                                        style={{ width: `${Math.min(100, (worker.dose / 30) * 100)}%` }}
+                                                        style={{ width: `${Math.min(100, (worker.dose / 10) * 100)}%` }}
                                                     />
                                                 </div>
                                             </div>
@@ -695,11 +713,11 @@ function Workers() {
                                 {selectedWorkerDetails.dose} <span className="text-sm font-sans font-normal text-slate-400">ppm·hr</span>
                             </div>
                             <p className="text-xs text-slate-400 mt-2">
-                                {selectedWorkerDetails.dose >= 25
-                                    ? "⚠️ ALERT: Exposure exceeds safety limits. Immediate zone rotation and medical evaluation required."
-                                    : selectedWorkerDetails.dose >= 18
-                                    ? "⚠️ ATTENTION: Approaching OSHA exposure limit. Monitor closely on subsequent shifts."
-                                    : "✓ SAFE: Cumulative exposure is well within occupational safety standards."}
+                                {selectedWorkerDetails.dose >= 10
+                                    ? "⚠️ ALERT: Exposure exceeds 10 ppm·hr action limit. Immediate zone rotation and medical evaluation required."
+                                    : selectedWorkerDetails.dose >= 7
+                                    ? "⚠️ ATTENTION: Approaching 10 ppm·hr OSHA action limit. Monitor closely on subsequent shifts."
+                                    : "✓ SAFE: Cumulative exposure is well within occupational safety standards (<7 ppm·hr)."}
                             </p>
                         </div>
 

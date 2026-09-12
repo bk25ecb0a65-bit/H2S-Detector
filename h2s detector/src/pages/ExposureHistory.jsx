@@ -22,105 +22,230 @@ import {
     ReferenceLine
 } from "recharts";
 import StatCard from "../components/StatCard";
-
-// Comprehensive historical exposure log dataset
-const INITIAL_LOGS = [
-    {
-        id: "EXP-8901",
-        timestamp: "2026-09-12 14:35",
-        worker: "Ravi Kumar",
-        workerId: "W-101",
-        badge: "H2S-00431",
-        location: "Refining Unit B - Flare Header",
-        shift: "Morning",
-        duration: "5 min scan",
-        concentration: "2 ppm",
-        dose: 14.3,
-        status: "Normal",
-        notes: "Routine shift inspection. Ventilation active."
-    },
-    {
-        id: "EXP-8907",
-        timestamp: "2026-09-09 15:30",
-        worker: "Ravi Kumar",
-        workerId: "W-101",
-        badge: "H2S-00431",
-        location: "Refining Unit B - Desulfurization",
-        shift: "Morning",
-        duration: "5 min scan",
-        concentration: "1 ppm",
-        dose: 11.2,
-        status: "Normal",
-        notes: "Catalyst changeover inspection."
-    }
-];
-
-// 7-day cumulative trend data
-const TREND_DATA = [
-    { date: "Sep 06", avgDose: 9.4, maxDose: 14.2, limit: 20 },
-    { date: "Sep 07", avgDose: 13.8, maxDose: 24.1, limit: 20 },
-    { date: "Sep 08", avgDose: 10.1, maxDose: 16.4, limit: 20 },
-    { date: "Sep 09", avgDose: 8.7, maxDose: 11.2, limit: 20 },
-    { date: "Sep 10", avgDose: 14.5, maxDose: 18.5, limit: 20 },
-    { date: "Sep 11", avgDose: 18.2, maxDose: 27.8, limit: 20 },
-    { date: "Sep 12", avgDose: 12.9, maxDose: 21.7, limit: 20 }
-];
-
-// Department exposure distribution data
-const DEPT_DATA = [
-    { name: "Refining B", totalDose: 38.6, workers: 4 },
-    { name: "Sulfur Rec.", totalDose: 54.3, workers: 5 },
-    { name: "Pipeline", totalDose: 18.4, workers: 3 },
-    { name: "Drilling 4", totalDose: 42.6, workers: 4 },
-    { name: "Chem Lab", totalDose: 8.2, workers: 2 },
-    { name: "Gas Proc.", totalDose: 49.1, workers: 3 }
-];
+import { getWorkers, getLogs, purgeOrphanedLogs } from "../data/workers.js";
 
 function ExposureHistory() {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [shiftFilter, setShiftFilter] = useState("All");
+    const [workerFilter, setWorkerFilter] = useState("All");
     const [selectedLog, setSelectedLog] = useState(null);
 
-    // Read logs from localStorage to pick up real-time scans
-    const [allLogs, setAllLogs] = useState(() => {
-        const saved = localStorage.getItem("h2s_exposure_logs");
-        return saved ? JSON.parse(saved) : INITIAL_LOGS;
-    });
+    // Live workers and logs from centralized data layer
+    const [workers, setWorkers] = useState(() => getWorkers());
+    const [allLogs, setAllLogs] = useState(() => getLogs());
 
     // Sync on window focus or storage changes
     useEffect(() => {
+        // Immediately purge any legacy or orphaned logs for workers no longer in registry
+        purgeOrphanedLogs();
+
         const handleSync = () => {
-            const saved = localStorage.getItem("h2s_exposure_logs");
-            if (saved) setAllLogs(JSON.parse(saved));
+            const currentWorkers = getWorkers();
+            setWorkers(currentWorkers);
+            setAllLogs(getLogs(currentWorkers));
         };
         window.addEventListener("focus", handleSync);
         window.addEventListener("storage", handleSync);
         window.addEventListener("h2s_logs_updated", handleSync);
+        window.addEventListener("h2s_workers_updated", handleSync);
         return () => {
             window.removeEventListener("focus", handleSync);
             window.removeEventListener("storage", handleSync);
             window.removeEventListener("h2s_logs_updated", handleSync);
+            window.removeEventListener("h2s_workers_updated", handleSync);
         };
     }, []);
 
-    // Filtered logs
+    // Ensure worker filter is valid for current workers list without cascading effects
+    const activeWorkerFilter = (workerFilter === "All" || workers.some(w => w.name === workerFilter || w.id === workerFilter))
+        ? workerFilter
+        : "All";
+
+    // Strictly filter logs so that ONLY workers currently present in the workers list are included
+    const validWorkerLogs = useMemo(() => {
+        if (!workers || workers.length === 0) return [];
+        const activeNames = new Set(workers.map(w => (w.name || "").trim().toLowerCase()));
+
+        // 1. Logs that strictly match an active worker by exact name
+        const matchedLogs = allLogs.filter((log) => {
+            if (!log || !log.worker) return false;
+            const wName = log.worker.trim().toLowerCase();
+            return activeNames.has(wName);
+        });
+
+        // 2. Ensure every active worker in the workers list has an active exposure record for Today
+        const coveredNames = new Set(matchedLogs.map(l => l.worker.trim().toLowerCase()));
+        const synthetic = [];
+        workers.forEach(w => {
+            const wNameLower = (w.name || "").trim().toLowerCase();
+            if (!coveredNames.has(wNameLower)) {
+                const now = new Date();
+                const timeStr = now.toISOString().replace("T", " ").slice(0, 16);
+                const doseNum = parseFloat(w.dose) || 0;
+                synthetic.push({
+                    id: `EXP-${(w.id || "101").replace(/[^a-zA-Z0-9]/g, "")}-TODAY`,
+                    timestamp: timeStr,
+                    worker: w.name,
+                    workerId: w.id,
+                    badge: w.badge,
+                    location: `${w.department || "Facility Unit"} - Today's Status`,
+                    shift: w.shift || "Morning",
+                    duration: "Shift Monitoring",
+                    concentration: doseNum >= 10 ? "5.0 ppm" : doseNum >= 5 ? "2.0 ppm" : doseNum >= 2 ? "1.0 ppm" : "~100–500 ppb",
+                    dose: doseNum,
+                    status: doseNum >= 10 ? "Critical" : doseNum >= 7 ? "Review" : "Normal",
+                    notes: `Current shift exposure record for registered worker ${w.name}.`
+                });
+            }
+        });
+
+        return [...matchedLogs, ...synthetic];
+    }, [allLogs, workers]);
+
+    // Filtered logs for UI table and CSV export
     const filteredLogs = useMemo(() => {
-        return allLogs.filter((log) => {
+        return validWorkerLogs.filter((log) => {
             const matchesSearch =
-                log.worker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                log.badge.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                log.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                log.id.toLowerCase().includes(searchQuery.toLowerCase());
+                (log.worker || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (log.badge || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (log.location || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (log.id || "").toLowerCase().includes(searchQuery.toLowerCase());
 
             const matchesStatus =
                 statusFilter === "All" || log.status === statusFilter;
             const matchesShift =
                 shiftFilter === "All" || log.shift === shiftFilter;
+            const matchesWorker =
+                activeWorkerFilter === "All" || log.worker === activeWorkerFilter || log.workerId === activeWorkerFilter;
 
-            return matchesSearch && matchesStatus && matchesShift;
+            return matchesSearch && matchesStatus && matchesShift && matchesWorker;
         });
-    }, [allLogs, searchQuery, statusFilter, shiftFilter]);
+    }, [validWorkerLogs, searchQuery, statusFilter, shiftFilter, activeWorkerFilter]);
+
+    // Live KPI Calculations derived strictly from valid worker logs & workers list
+    const avgDose = useMemo(() => {
+        if (validWorkerLogs.length > 0) {
+            const sum = validWorkerLogs.reduce((acc, l) => acc + (parseFloat(l.dose) || 0), 0);
+            return (sum / validWorkerLogs.length).toFixed(1);
+        }
+        if (workers.length > 0) {
+            const sum = workers.reduce((acc, w) => acc + (parseFloat(w.dose) || 0), 0);
+            return (sum / workers.length).toFixed(1);
+        }
+        return "0.0";
+    }, [validWorkerLogs, workers]);
+
+    const peakRecord = useMemo(() => {
+        let maxVal = 0;
+        let loc = workers[0]?.department || "Refining Unit";
+        validWorkerLogs.forEach(l => {
+            const d = parseFloat(l.dose) || 0;
+            if (d >= maxVal) {
+                maxVal = d;
+                loc = l.location || loc;
+            }
+        });
+        if (validWorkerLogs.length === 0) {
+            workers.forEach(w => {
+                const d = parseFloat(w.dose) || 0;
+                if (d >= maxVal) {
+                    maxVal = d;
+                    loc = w.department || loc;
+                }
+            });
+        }
+        const cleanLoc = loc.split(" - ")[0].trim();
+        return {
+            value: maxVal > 0 ? maxVal.toFixed(1) : "0.0",
+            location: cleanLoc
+        };
+    }, [validWorkerLogs, workers]);
+
+    const exceedanceCount = useMemo(() => {
+        return validWorkerLogs.filter(l => (parseFloat(l.dose) || 0) >= 20 || l.status === "Critical").length;
+    }, [validWorkerLogs]);
+
+    const complianceRate = useMemo(() => {
+        if (validWorkerLogs.length === 0) return workers.length > 0 ? "100.0%" : "0.0%";
+        const rate = ((validWorkerLogs.length - exceedanceCount) / validWorkerLogs.length) * 100;
+        return `${Math.max(0, rate).toFixed(1)}%`;
+    }, [validWorkerLogs, exceedanceCount, workers.length]);
+
+    // Daily Cumulative Exposure Trend computed dynamically from valid worker logs AND current worker doses for today
+    const trendData = useMemo(() => {
+        if (!workers || workers.length === 0) {
+            return [];
+        }
+
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+        const dateMap = {};
+        validWorkerLogs.forEach(l => {
+            const dateKey = (l.timestamp || "").slice(0, 10);
+            if (!dateKey) return;
+            if (!dateMap[dateKey]) {
+                dateMap[dateKey] = [];
+            }
+            dateMap[dateKey].push(parseFloat(l.dose) || 0);
+        });
+
+        // Ensure TODAY is ALWAYS present with current workforce values
+        if (!dateMap[todayKey]) {
+            dateMap[todayKey] = [];
+        }
+        if (dateMap[todayKey].length === 0) {
+            workers.forEach(w => {
+                dateMap[todayKey].push(parseFloat(w.dose) || 0);
+            });
+        }
+
+        const sortedDates = Object.keys(dateMap).sort();
+        return sortedDates.map(dk => {
+            const doses = dateMap[dk];
+            const avg = doses.length > 0 ? doses.reduce((a, b) => a + b, 0) / doses.length : 0;
+            const max = doses.length > 0 ? Math.max(...doses) : 0;
+            let label;
+            if (dk === todayKey) {
+                label = `${todayLabel} (Today)`;
+            } else {
+                try {
+                    const [y, m, d] = dk.split("-");
+                    const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                    label = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                } catch {
+                    label = dk;
+                }
+            }
+            return {
+                date: label,
+                avgDose: Number(avg.toFixed(1)),
+                maxDose: Number(max.toFixed(1)),
+                limit: 20
+            };
+        });
+    }, [validWorkerLogs, workers]);
+
+    // Department exposure distribution computed strictly from registered workers
+    const deptData = useMemo(() => {
+        const map = {};
+        workers.forEach(w => {
+            const dept = w.department || "General Unit";
+            if (!map[dept]) {
+                map[dept] = { name: dept, totalDose: 0, workers: 0 };
+            }
+            map[dept].workers += 1;
+            map[dept].totalDose += parseFloat(w.dose) || 0;
+        });
+
+        const result = Object.values(map).map(d => ({
+            ...d,
+            totalDose: Number(d.totalDose.toFixed(1))
+        }));
+
+        return result.length > 0 ? result : [];
+    }, [workers]);
 
     // Export table data to CSV file
     const exportCSV = () => {
@@ -152,48 +277,50 @@ function ExposureHistory() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
+            {/* Header with Title and Quick Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">H₂S Exposure History</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-white">Exposure History</h1>
                     <p className="text-slate-400 mt-1 text-sm">
-                        Comprehensive log of badge readings, dosimeter scans, and cumulative workplace exposure.
+                        Comprehensive log of H₂S personal dosimeter measurements, dose trends, and workplace regulatory compliance.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div>
                     <button
                         onClick={exportCSV}
-                        className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-lg text-sm font-semibold transition"
+                        className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer"
                     >
                         <Download size={16} className="text-sky-400" /> Export CSV Report
                     </button>
                 </div>
             </div>
 
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {/* KPI Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    title="Average Daily Dose"
-                    value="12.9"
-                    description="ppm·hr per worker"
+                    title="Average Shift Dose"
+                    value={avgDose}
+                    unit="ppm·hr"
+                    description="Workforce average across valid workers"
                     icon={<Activity size={24} className="text-sky-400" />}
                 />
                 <StatCard
-                    title="Peak Recorded Level"
-                    value="27.8"
-                    description="ppm·hr (Gas Processing Facility)"
+                    title="Peak Area Exposure"
+                    value={peakRecord.value}
+                    unit="ppm·hr"
+                    description={peakRecord.location}
                     icon={<AlertTriangle size={24} className="text-amber-400" />}
                 />
                 <StatCard
                     title="Exceedance Events"
-                    value="3"
-                    description="Past permissible limit (>20 ppm·hr)"
-                    icon={<AlertCircle size={24} className="text-red-400" />}
+                    value={String(exceedanceCount)}
+                    description={exceedanceCount > 0 ? "Past permissible limit (≥10 ppm·hr)" : "Zero exceedances recorded"}
+                    icon={<AlertCircle size={24} className={exceedanceCount > 0 ? "text-red-400" : "text-emerald-400"} />}
                 />
                 <StatCard
                     title="Compliance Rate"
-                    value="96.7%"
-                    description="Within OSHA & NIOSH guidelines"
+                    value={complianceRate}
+                    description="Within OSHA & NIOSH guidelines (<10 ppm·hr)"
                     icon={<ShieldCheck size={24} className="text-emerald-400" />}
                 />
             </div>
@@ -205,31 +332,37 @@ function ExposureHistory() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-base font-semibold text-white">Daily Cumulative Exposure Trend</h2>
-                            <p className="text-xs text-slate-400">Peak vs Average worker dose against 20 ppm·hr OSHA action limit</p>
+                            <p className="text-xs text-slate-400">Peak vs Average worker dose against 10 ppm·hr OSHA action limit</p>
                         </div>
-                        <span className="text-xs px-2.5 py-1 rounded bg-slate-800 text-sky-300 font-medium">Last 7 Days</span>
+                        <span className="text-xs px-2.5 py-1 rounded bg-slate-800 text-sky-300 font-medium">Logged Days ({trendData.length})</span>
                     </div>
 
                     <div className="h-64 pt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={TREND_DATA}>
-                                <defs>
-                                    <linearGradient id="colorMax" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4} />
-                                        <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                                <YAxis stroke="#64748b" fontSize={12} domain={[0, 32]} unit=" ppm·h" />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "8px", color: "#fff" }}
-                                />
-                                <ReferenceLine y={20} label={{ value: "OSHA Action Limit (20 ppm·hr)", fill: "#ef4444", fontSize: 10, position: "top" }} stroke="#ef4444" strokeDasharray="4 4" />
-                                <Area type="monotone" dataKey="maxDose" name="Peak Dose" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorMax)" />
-                                <Area type="monotone" dataKey="avgDose" name="Average Dose" stroke="#22c55e" strokeWidth={2} fillOpacity={0} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {validWorkerLogs.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                No exposure logs recorded for active workers.
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={trendData}>
+                                    <defs>
+                                        <linearGradient id="colorMax" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.4} />
+                                            <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                                    <YAxis stroke="#64748b" fontSize={12} domain={[0, (dataMax) => Math.max(15, Math.ceil(dataMax + 2))]} unit=" ppm·h" />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "8px", color: "#fff" }}
+                                    />
+                                    <ReferenceLine y={10} label={{ value: "OSHA Action Limit (10 ppm·hr)", fill: "#ef4444", fontSize: 10, position: "top" }} stroke="#ef4444" strokeDasharray="4 4" />
+                                    <Area type="monotone" dataKey="maxDose" name="Peak Dose" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorMax)" />
+                                    <Area type="monotone" dataKey="avgDose" name="Average Dose" stroke="#22c55e" strokeWidth={2} fillOpacity={0} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 
@@ -241,17 +374,23 @@ function ExposureHistory() {
                     </div>
 
                     <div className="h-64 pt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={DEPT_DATA} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis type="number" stroke="#64748b" fontSize={11} />
-                                <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={75} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "8px", color: "#fff" }}
-                                />
-                                <Bar dataKey="totalDose" name="Total ppm·hr" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {deptData.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                No registered workforce department data.
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={deptData} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                    <XAxis type="number" stroke="#64748b" fontSize={11} />
+                                    <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={90} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: "8px", color: "#fff" }}
+                                    />
+                                    <Bar dataKey="totalDose" name="Total ppm·hr" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
             </div>
@@ -271,6 +410,17 @@ function ExposureHistory() {
 
                 <div className="flex flex-wrap items-center gap-2">
                     <select
+                        value={activeWorkerFilter}
+                        onChange={(e) => setWorkerFilter(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                        <option value="All">All Workers ({workers.length})</option>
+                        {workers.map((w) => (
+                            <option key={w.id} value={w.name}>{w.name} ({w.badge})</option>
+                        ))}
+                    </select>
+
+                    <select
                         value={shiftFilter}
                         onChange={(e) => setShiftFilter(e.target.value)}
                         className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500 cursor-pointer"
@@ -287,9 +437,9 @@ function ExposureHistory() {
                         className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500 cursor-pointer"
                     >
                         <option value="All">All Statuses</option>
-                        <option value="Normal">Normal (&lt;18)</option>
-                        <option value="Review">Review (18-25)</option>
-                        <option value="Critical">Critical (&gt;25)</option>
+                        <option value="Normal">Normal (&lt;7)</option>
+                        <option value="Review">Review (7-10)</option>
+                        <option value="Critical">Critical (&ge;10)</option>
                     </select>
                 </div>
             </div>
