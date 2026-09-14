@@ -1,0 +1,489 @@
+{
+  "10min": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        221,
+        217,
+        171
+      ],
+      "hex": "#ddd9ab",
+      "note": "Pale Yellow"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        214,
+        206,
+        159
+      ],
+      "hex": "#d6ce9f",
+      "note": "Yellow"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        209,
+        191,
+        122
+      ],
+      "hex": "#d1bf7a",
+      "note": "Amber Yellow"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        219,
+        208,
+        152
+      ],
+      "hex": "#dbd098",
+      "note": "Warm Amber"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        220,
+        175,
+        79
+      ],
+      "hex": "#dcaf4f",
+      "note": "Deep Amber"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        215,
+        171,
+        92
+      ],
+      "hex": "#d7ab5c",
+      "note": "Brown Amber"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        193,
+        182,
+        131
+      ],
+      "hex": "#c1b683",
+      "note": "Dark Olive Grey"
+    }
+  ],
+  "1min": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        223,
+        218,
+        199
+      ],
+      "hex": "#dfdac7",
+      "note": "Trace Cream"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        217,
+        214,
+        197
+      ],
+      "hex": "#d9d6c5",
+      "note": "Light Beige"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        216,
+        211,
+        184
+      ],
+      "hex": "#d8d3b8",
+      "note": "Pale Yellow"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        214,
+        210,
+        192
+      ],
+      "hex": "#d6d2c0",
+      "note": "Light Yellow"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        197,
+        183,
+        122
+      ],
+      "hex": "#c5b77a",
+      "note": "Amber / Ochre"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        208,
+        170,
+        92
+      ],
+      "hex": "#d0aa5c",
+      "note": "Deep Amber"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        201,
+        188,
+        142
+      ],
+      "hex": "#c9bc8e",
+      "note": "Slate Grey / Olive"
+    }
+  ],
+  "30min": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        218,
+        211,
+        153
+      ],
+      "hex": "#dad399",
+      "note": "Yellow"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        224,
+        211,
+        157
+      ],
+      "hex": "#e0d39d",
+      "note": "Warm Yellow"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        211,
+        184,
+        113
+      ],
+      "hex": "#d3b871",
+      "note": "Amber"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        209,
+        185,
+        114
+      ],
+      "hex": "#d1b972",
+      "note": "Deep Amber"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        209,
+        168,
+        99
+      ],
+      "hex": "#d1a863",
+      "note": "Golden Brown"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        204,
+        172,
+        96
+      ],
+      "hex": "#ccac60",
+      "note": "Dark Brown"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        208,
+        163,
+        77
+      ],
+      "hex": "#d0a34d",
+      "note": "Saturated Amber-Brown"
+    }
+  ],
+  "30s": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        234,
+        228,
+        208
+      ],
+      "hex": "#eae4d0",
+      "note": "Subtle Cream"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        227,
+        223,
+        211
+      ],
+      "hex": "#e3dfd3",
+      "note": "Trace Cream"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        219,
+        216,
+        201
+      ],
+      "hex": "#dbd8c9",
+      "note": "Pale Yellow"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        213,
+        207,
+        182
+      ],
+      "hex": "#d5cfb6",
+      "note": "Light Yellow"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        217,
+        201,
+        145
+      ],
+      "hex": "#d9c991",
+      "note": "Yellow / Amber"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        214,
+        194,
+        123
+      ],
+      "hex": "#d6c27b",
+      "note": "Warm Amber"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        198,
+        185,
+        142
+      ],
+      "hex": "#c6b98e",
+      "note": "Muted Grey / Olive"
+    }
+  ],
+  "5min": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        225,
+        220,
+        196
+      ],
+      "hex": "#e1dcc4",
+      "note": "Trace Cream"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        209,
+        207,
+        178
+      ],
+      "hex": "#d1cfb2",
+      "note": "Pale Yellow-Grey"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        211,
+        208,
+        161
+      ],
+      "hex": "#d3d0a1",
+      "note": "Yellow"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        216,
+        202,
+        145
+      ],
+      "hex": "#d8ca91",
+      "note": "Warm Yellow"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        220,
+        171,
+        85
+      ],
+      "hex": "#dcab55",
+      "note": "Amber / Ochre"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        198,
+        159,
+        75
+      ],
+      "hex": "#c69f4b",
+      "note": "Golden Brown"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        184,
+        169,
+        115
+      ],
+      "hex": "#b8a973",
+      "note": "Dark Slate Grey / Olive"
+    }
+  ],
+  "60min": [
+    {
+      "label": "200 ppb",
+      "ppm": 0.2,
+      "rgb": [
+        219,
+        210,
+        155
+      ],
+      "hex": "#dbd29b",
+      "note": "Yellow"
+    },
+    {
+      "label": "500 ppb",
+      "ppm": 0.5,
+      "rgb": [
+        218,
+        209,
+        140
+      ],
+      "hex": "#dad18c",
+      "note": "Golden Yellow"
+    },
+    {
+      "label": "1 ppm",
+      "ppm": 1,
+      "rgb": [
+        219,
+        180,
+        69
+      ],
+      "hex": "#dbb445",
+      "note": "Deep Amber"
+    },
+    {
+      "label": "2 ppm",
+      "ppm": 2,
+      "rgb": [
+        223,
+        177,
+        64
+      ],
+      "hex": "#dfb140",
+      "note": "Deep Ochre"
+    },
+    {
+      "label": "4 ppm",
+      "ppm": 4,
+      "rgb": [
+        223,
+        164,
+        40
+      ],
+      "hex": "#dfa428",
+      "note": "Dark Brown"
+    },
+    {
+      "label": "8 ppm",
+      "ppm": 8,
+      "rgb": [
+        208,
+        163,
+        58
+      ],
+      "hex": "#d0a33a",
+      "note": "Heavy Brown"
+    },
+    {
+      "label": "10 ppm",
+      "ppm": 10,
+      "rgb": [
+        196,
+        147,
+        40
+      ],
+      "hex": "#c49328",
+      "note": "Intense Brown / Black onset"
+    }
+  ],
+  "baseline_control": [
+    {
+      "label": "0 s Baseline Substrate",
+      "ppm": 0,
+      "rgb": [
+        220,
+        216,
+        204
+      ],
+      "hex": "#dcd8cc",
+      "note": "Unexposed Control"
+    }
+  ]
+}

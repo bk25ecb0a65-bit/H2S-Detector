@@ -132,13 +132,13 @@ function Workers() {
     // Save Worker (Add or Edit)
     const handleSaveWorker = (e) => {
         e.preventDefault();
-        const doseNum = parseFloat(formData.dose) || 0;
-        let status = "Normal";
-        if (doseNum >= 10) status = "Warning";
-        else if (doseNum >= 7) status = "Review";
-
         let updatedList;
         if (editingWorker) {
+            const doseNum = parseFloat(formData.dose) || 0;
+            let status = "Normal";
+            if (doseNum >= 10) status = "Warning";
+            else if (doseNum >= 7) status = "Review";
+
             const updatedWorker = {
                 ...editingWorker,
                 ...formData,
@@ -158,8 +158,8 @@ function Workers() {
             const newWorker = {
                 id: `W-${maxNum + 1}`,
                 ...formData,
-                dose: doseNum,
-                status,
+                dose: 0.0,
+                status: "Normal",
                 lastScan: "Just now"
             };
             updatedList = [newWorker, ...workers];
@@ -621,7 +621,7 @@ function Workers() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className={`grid grid-cols-1 ${editingWorker ? "sm:grid-cols-2" : ""} gap-4`}>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-400 mb-1">Shift</label>
                                     <select
@@ -634,17 +634,19 @@ function Workers() {
                                         <option value="Night">Night Shift</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Cumulative Dose (ppm·hr)</label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        value={formData.dose}
-                                        onChange={(e) => setFormData({ ...formData, dose: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-sky-500"
-                                    />
-                                </div>
+                                {editingWorker && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-400 mb-1">Cumulative Dose (ppm·hr)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            value={formData.dose}
+                                            onChange={(e) => setFormData({ ...formData, dose: e.target.value })}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-sky-500"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">

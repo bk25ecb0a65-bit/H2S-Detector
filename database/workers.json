@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "6aa658eaa5ea3438bbd52f79",
+    "id": "W-101",
+    "name": "Ravi Kumar",
+    "email": "ravi.kumar@petrogas.com",
+    "phone": "+91 98451 22341",
+    "badge": "H2S-00431",
+    "department": "Refining Unit B",
+    "role": "Senior Plant Operator",
+    "shift": "Morning",
+    "dose": 4.2,
+    "status": "Normal",
+    "lastScan": "Today, 10:30 AM",
+    "createdAt": "2026-09-13T08:03:54.733Z",
+    "updatedAt": "2026-09-13T08:03:54.733Z",
+    "__v": 0
+  }
+]

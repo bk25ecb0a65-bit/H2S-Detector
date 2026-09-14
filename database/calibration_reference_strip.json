@@ -1,0 +1,128 @@
+[
+  {
+    "_id": "6aa658eaa5ea3438bbd52f8b",
+    "blockId": 0,
+    "level": "0.0 ppm",
+    "ppm": 0,
+    "colorCategory": "Blank Substrate",
+    "rgb": [
+      236,
+      231,
+      212
+    ],
+    "hex": "#ece7d4",
+    "desc": "Unexposed Baseline Paper Substrate",
+    "status": "Normal",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f8c",
+    "blockId": 1,
+    "level": "0.3 ppm",
+    "ppm": 0.3,
+    "colorCategory": "Trace Cream",
+    "rgb": [
+      212,
+      204,
+      157
+    ],
+    "hex": "#d4cc9d",
+    "desc": "Trace Substrate Calibrator",
+    "status": "Normal",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f8d",
+    "blockId": 2,
+    "level": "1.0 ppm",
+    "ppm": 1,
+    "colorCategory": "Yellow",
+    "rgb": [
+      209,
+      174,
+      92
+    ],
+    "hex": "#d1ae5c",
+    "desc": "Mid-Range Yellow Calibrator",
+    "status": "Normal",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f8e",
+    "blockId": 3,
+    "level": "2.0 ppm",
+    "ppm": 2,
+    "colorCategory": "Amber",
+    "rgb": [
+      217,
+      173,
+      76
+    ],
+    "hex": "#d9ad4c",
+    "desc": "Moderate Amber Calibrator",
+    "status": "Normal",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f8f",
+    "blockId": 4,
+    "level": "5.0 ppm",
+    "ppm": 5,
+    "colorCategory": "Deep Amber",
+    "rgb": [
+      204,
+      156,
+      48
+    ],
+    "hex": "#cc9c30",
+    "desc": "High Tone Deep Amber Calibrator",
+    "status": "Normal",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f90",
+    "blockId": 5,
+    "level": "10.0 ppm",
+    "ppm": 10,
+    "colorCategory": "Grey",
+    "rgb": [
+      142,
+      132,
+      122
+    ],
+    "hex": "#8e847a",
+    "desc": "OSHA Action Limit Grey Calibrator",
+    "status": "Critical",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  },
+  {
+    "_id": "6aa658eaa5ea3438bbd52f91",
+    "blockId": 6,
+    "level": "20.0 ppm",
+    "ppm": 20,
+    "colorCategory": "Black",
+    "rgb": [
+      42,
+      38,
+      35
+    ],
+    "hex": "#2a2623",
+    "desc": "High Saturation PbS Black Calibrator",
+    "status": "Critical",
+    "__v": 0,
+    "createdAt": "2026-09-13T08:03:54.765Z",
+    "updatedAt": "2026-09-13T08:03:54.765Z"
+  }
+]

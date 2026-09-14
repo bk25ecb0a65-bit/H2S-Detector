@@ -1,3 +1,4 @@
+import { fetchWorkersApi, saveWorkerApi, fetchScansApi, submitScanApi } from "../services/api.js";
 // Centralized workers, badges, and exposure data helpers
 
 export const INITIAL_WORKERS = [
@@ -157,6 +158,9 @@ export function saveWorkers(workers) {
     try {
         localStorage.setItem("h2s_workers_data", JSON.stringify(workers));
         window.dispatchEvent(new CustomEvent("h2s_workers_updated", { detail: workers }));
+        if (Array.isArray(workers)) {
+            workers.forEach(w => saveWorkerApi(w).catch(() => {}));
+        }
     } catch (e) {
         console.error("Failed to save workers:", e);
     }
@@ -202,6 +206,9 @@ export function saveLogs(logs) {
     try {
         localStorage.setItem("h2s_exposure_logs", JSON.stringify(logs));
         window.dispatchEvent(new CustomEvent("h2s_logs_updated", { detail: logs }));
+        if (Array.isArray(logs) && logs.length > 0) {
+            submitScanApi(logs[0]).catch(() => {});
+        }
     } catch (e) {
         console.error("Failed to save logs:", e);
     }
@@ -251,3 +258,22 @@ export function purgeOrphanedLogs() {
         return [];
     }
 }
+
+// Automatic initialization sync with MongoDB backend
+export function initMongoSync() {
+    if (typeof window === "undefined") return;
+    fetchWorkersApi().then(res => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            localStorage.setItem("h2s_workers_data", JSON.stringify(res.data));
+            window.dispatchEvent(new CustomEvent("h2s_workers_updated", { detail: res.data }));
+        }
+    }).catch(() => {});
+
+    fetchScansApi().then(res => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+            localStorage.setItem("h2s_exposure_logs", JSON.stringify(res.data));
+            window.dispatchEvent(new CustomEvent("h2s_logs_updated", { detail: res.data }));
+        }
+    }).catch(() => {});
+}
+initMongoSync();

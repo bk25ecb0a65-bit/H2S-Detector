@@ -109,28 +109,28 @@ const CALIBRATION_REFERENCE_STRIP = [
 // ============================================================
 const EMPIRICAL_CALIBRATION_MATRIX = {
     "30s": [
-        { label: "200 ppb", ppm: 0.2, rgb: [234, 228, 209], hex: "#eae4d1", note: "Subtle Cream" },
+        { label: "200 ppb", ppm: 0.2, rgb: [234, 228, 208], hex: "#eae4d0", note: "Subtle Cream" },
         { label: "500 ppb", ppm: 0.5, rgb: [227, 223, 211], hex: "#e3dfd3", note: "Trace Cream" },
-        { label: "1 ppm", ppm: 1.0, rgb: [219, 217, 201], hex: "#dbd9c9", note: "Pale Yellow" },
-        { label: "2 ppm", ppm: 2.0, rgb: [214, 208, 184], hex: "#d6d0b8", note: "Light Yellow" },
-        { label: "4 ppm", ppm: 4.0, rgb: [217, 200, 146], hex: "#d9c892", note: "Yellow / Amber" },
+        { label: "1 ppm", ppm: 1.0, rgb: [219, 216, 201], hex: "#dbd8c9", note: "Pale Yellow" },
+        { label: "2 ppm", ppm: 2.0, rgb: [213, 207, 182], hex: "#d5cfb6", note: "Light Yellow" },
+        { label: "4 ppm", ppm: 4.0, rgb: [217, 201, 145], hex: "#d9c991", note: "Yellow / Amber" },
         { label: "8 ppm", ppm: 8.0, rgb: [214, 194, 123], hex: "#d6c27b", note: "Warm Amber" },
         { label: "10 ppm", ppm: 10.0, rgb: [198, 185, 142], hex: "#c6b98e", note: "Muted Grey / Olive" }
     ],
     "1min": [
         { label: "200 ppb", ppm: 0.2, rgb: [223, 218, 199], hex: "#dfdac7", note: "Trace Cream" },
         { label: "500 ppb", ppm: 0.5, rgb: [217, 214, 197], hex: "#d9d6c5", note: "Light Beige" },
-        { label: "1 ppm", ppm: 1.0, rgb: [215, 211, 185], hex: "#d7d3b9", note: "Pale Yellow" },
-        { label: "2 ppm", ppm: 2.0, rgb: [214, 211, 192], hex: "#d6d3c0", note: "Light Yellow" },
-        { label: "4 ppm", ppm: 4.0, rgb: [198, 183, 122], hex: "#c6b77a", note: "Amber / Ochre" },
-        { label: "8 ppm", ppm: 8.0, rgb: [208, 170, 93], hex: "#d0aa5d", note: "Deep Amber" },
-        { label: "10 ppm", ppm: 10.0, rgb: [200, 188, 141], hex: "#c8bc8d", note: "Slate Grey / Olive" }
+        { label: "1 ppm", ppm: 1.0, rgb: [216, 211, 184], hex: "#d8d3b8", note: "Pale Yellow" },
+        { label: "2 ppm", ppm: 2.0, rgb: [214, 210, 192], hex: "#d6d2c0", note: "Light Yellow" },
+        { label: "4 ppm", ppm: 4.0, rgb: [197, 183, 122], hex: "#c5b77a", note: "Amber / Ochre" },
+        { label: "8 ppm", ppm: 8.0, rgb: [208, 170, 92], hex: "#d0aa5c", note: "Deep Amber" },
+        { label: "10 ppm", ppm: 10.0, rgb: [201, 188, 142], hex: "#c9bc8e", note: "Slate Grey / Olive" }
     ],
     "5min": [
-        { label: "200 ppb", ppm: 0.2, rgb: [226, 220, 196], hex: "#e2dcc4", note: "Trace Cream" },
-        { label: "500 ppb", ppm: 0.5, rgb: [208, 207, 177], hex: "#d0cfb1", note: "Pale Yellow-Grey" },
+        { label: "200 ppb", ppm: 0.2, rgb: [225, 220, 196], hex: "#e1dcc4", note: "Trace Cream" },
+        { label: "500 ppb", ppm: 0.5, rgb: [209, 207, 178], hex: "#d1cfb2", note: "Pale Yellow-Grey" },
         { label: "1 ppm", ppm: 1.0, rgb: [211, 208, 161], hex: "#d3d0a1", note: "Yellow" },
-        { label: "2 ppm", ppm: 2.0, rgb: [215, 202, 145], hex: "#d7ca91", note: "Warm Yellow" },
+        { label: "2 ppm", ppm: 2.0, rgb: [216, 202, 145], hex: "#d8ca91", note: "Warm Yellow" },
         { label: "4 ppm", ppm: 4.0, rgb: [220, 171, 85], hex: "#dcab55", note: "Amber / Ochre" },
         { label: "8 ppm", ppm: 8.0, rgb: [198, 159, 75], hex: "#c69f4b", note: "Golden Brown" },
         { label: "10 ppm", ppm: 10.0, rgb: [184, 169, 115], hex: "#b8a973", note: "Dark Slate Grey / Olive" }
@@ -138,28 +138,28 @@ const EMPIRICAL_CALIBRATION_MATRIX = {
     "10min": [
         { label: "200 ppb", ppm: 0.2, rgb: [221, 217, 171], hex: "#ddd9ab", note: "Pale Yellow" },
         { label: "500 ppb", ppm: 0.5, rgb: [214, 206, 159], hex: "#d6ce9f", note: "Yellow" },
-        { label: "1 ppm", ppm: 1.0, rgb: [208, 190, 121], hex: "#d0be79", note: "Amber Yellow" },
+        { label: "1 ppm", ppm: 1.0, rgb: [209, 191, 122], hex: "#d1bf7a", note: "Amber Yellow" },
         { label: "2 ppm", ppm: 2.0, rgb: [219, 208, 152], hex: "#dbd098", note: "Warm Amber" },
-        { label: "4 ppm", ppm: 4.0, rgb: [220, 175, 78], hex: "#dcaf4e", note: "Deep Amber" },
-        { label: "8 ppm", ppm: 8.0, rgb: [215, 172, 93], hex: "#d7ac5d", note: "Brown Amber" },
+        { label: "4 ppm", ppm: 4.0, rgb: [220, 175, 79], hex: "#dcaf4f", note: "Deep Amber" },
+        { label: "8 ppm", ppm: 8.0, rgb: [215, 171, 92], hex: "#d7ab5c", note: "Brown Amber" },
         { label: "10 ppm", ppm: 10.0, rgb: [193, 182, 131], hex: "#c1b683", note: "Dark Olive Grey" }
     ],
     "30min": [
-        { label: "200 ppb", ppm: 0.2, rgb: [218, 211, 152], hex: "#dad398", note: "Yellow" },
-        { label: "500 ppb", ppm: 0.5, rgb: [225, 212, 158], hex: "#e1d49e", note: "Warm Yellow" },
-        { label: "1 ppm", ppm: 1.0, rgb: [210, 184, 111], hex: "#d2b86f", note: "Amber" },
+        { label: "200 ppb", ppm: 0.2, rgb: [218, 211, 153], hex: "#dad399", note: "Yellow" },
+        { label: "500 ppb", ppm: 0.5, rgb: [224, 211, 157], hex: "#e0d39d", note: "Warm Yellow" },
+        { label: "1 ppm", ppm: 1.0, rgb: [211, 184, 113], hex: "#d3b871", note: "Amber" },
         { label: "2 ppm", ppm: 2.0, rgb: [209, 185, 114], hex: "#d1b972", note: "Deep Amber" },
-        { label: "4 ppm", ppm: 4.0, rgb: [208, 168, 99], hex: "#d0a863", note: "Golden Brown" },
+        { label: "4 ppm", ppm: 4.0, rgb: [209, 168, 99], hex: "#d1a863", note: "Golden Brown" },
         { label: "8 ppm", ppm: 8.0, rgb: [204, 172, 96], hex: "#ccac60", note: "Dark Brown" },
         { label: "10 ppm", ppm: 10.0, rgb: [208, 163, 77], hex: "#d0a34d", note: "Saturated Amber-Brown" }
     ],
     "60min": [
         { label: "200 ppb", ppm: 0.2, rgb: [219, 210, 155], hex: "#dbd29b", note: "Yellow" },
-        { label: "500 ppb", ppm: 0.5, rgb: [218, 209, 139], hex: "#dad18b", note: "Golden Yellow" },
+        { label: "500 ppb", ppm: 0.5, rgb: [218, 209, 140], hex: "#dad18c", note: "Golden Yellow" },
         { label: "1 ppm", ppm: 1.0, rgb: [219, 180, 69], hex: "#dbb445", note: "Deep Amber" },
         { label: "2 ppm", ppm: 2.0, rgb: [223, 177, 64], hex: "#dfb140", note: "Deep Ochre" },
         { label: "4 ppm", ppm: 4.0, rgb: [223, 164, 40], hex: "#dfa428", note: "Dark Brown" },
-        { label: "8 ppm", ppm: 8.0, rgb: [208, 163, 57], hex: "#d0a339", note: "Heavy Brown" },
+        { label: "8 ppm", ppm: 8.0, rgb: [208, 163, 58], hex: "#d0a33a", note: "Heavy Brown" },
         { label: "10 ppm", ppm: 10.0, rgb: [196, 147, 40], hex: "#c49328", note: "Intense Brown / Black onset" }
     ]
 };
@@ -198,6 +198,44 @@ function calculateDeltaE(lab1, lab2) {
         Math.pow(lab1.a - lab2.a, 2) +
         Math.pow(lab1.b - lab2.b, 2)
     );
+}
+
+// ============================================================
+// ENVIRONMENTAL CORRECTION ENGINE (Temperature & Humidity)
+// Derived from lead acetate–H2S Arrhenius reaction kinetics:
+// Reference Conditions: T_ref = 27.5 °C (range 25-30 °C), RH_ref = 62.5 % (range 55-70 %)
+// Coefficients: alpha_T = 0.03 / °C, alpha_H = 0.010 / % RH
+// FT = 1 + alpha_T * (T_ref - T)
+// FH = 1 + alpha_H * (RH_ref - RH)
+// Net Environmental Multiplier = FT * FH
+// Corrected Dose / Exposure = Raw Dose / Exposure * FT * FH
+// ============================================================
+const T_REF = 27.5; // °C
+const ALPHA_T = 0.03; // per °C
+const RH_REF = 62.5; // %
+const ALPHA_H = 0.010; // per % RH
+
+function computeEnvironmentalFactors(tempInput, humidityInput) {
+    const T = typeof tempInput === "number" ? tempInput : parseFloat(String(tempInput).trim()) || T_REF;
+    const RH = typeof humidityInput === "number" ? humidityInput : parseFloat(String(humidityInput).trim()) || RH_REF;
+
+    // FT = 1 + 0.03 * (27.5 - T)
+    const rawFt = 1 + ALPHA_T * (T_REF - T);
+    const fT = Number(Math.max(0.1, rawFt).toFixed(3));
+
+    // FH = 1 + 0.010 * (62.5 - RH)
+    const rawFh = 1 + ALPHA_H * (RH_REF - RH);
+    const fH = Number(Math.max(0.1, rawFh).toFixed(3));
+
+    const fEnv = Number((fT * fH).toFixed(3));
+
+    return {
+        T,
+        RH,
+        fT,
+        fH,
+        fEnv
+    };
 }
 
 function getMedian(arr) {
@@ -354,8 +392,8 @@ function matchEmpiricalExposure(sampleLab, durationKey = "5min") {
             id: "base_0ppm",
             label: "0 ppm (Baseline)",
             ppm: 0.0,
-            rgb: [235, 230, 211],
-            hex: "#ebe6d3",
+            rgb: [220, 216, 204],
+            hex: "#dcd8cc",
             colorCategory: "Blank Substrate",
             status: "Normal"
         }
@@ -527,6 +565,9 @@ function ScanBadge() {
     const [temperature, setTemperature] = useState("32");
     const [humidity, setHumidity] = useState("64");
     const [selectedTime, setSelectedTime] = useState("5min");
+
+    // Real-time environmental multipliers from lead acetate kinetics model
+    const liveEnv = computeEnvironmentalFactors(temperature, humidity);
 
     // Camera & Image Processing State
     const [imageObj, setImageObj] = useState(null);
@@ -1057,9 +1098,16 @@ function ScanBadge() {
 
             // Step 5: Match against empirical exposure database for selected duration
             const matchResult = matchEmpiricalExposure(sampleLab, selectedTime);
-            const exactPpm = matchResult.exactPpm;
+            const rawPpm = matchResult.exactPpm;
 
-            const doseIncrement = Number((exactPpm * 1.0).toFixed(1));
+            // Step 5b: Apply Lead Acetate Arrhenius Temperature & Humidity Compensation
+            // Formulas:
+            //   FT = 1 + 0.03 * (27.5 - T)
+            //   FH = 1 + 0.010 * (62.5 - RH)
+            //   Corrected Exposure = Raw Exposure * FT * FH
+            const env = computeEnvironmentalFactors(temperature, humidity);
+            const exactPpm = rawPpm <= 0 ? 0.0 : Number(Math.max(0, rawPpm * env.fEnv).toFixed(2));
+            const doseIncrement = Number((exactPpm * 1.0).toFixed(2));
 
             // Step 6: Centralized Worker Dose Tracking
             let updatedWorkers = [...workersList];
@@ -1112,19 +1160,32 @@ function ScanBadge() {
                 badge: badgeId.trim(),
                 location: `${targetWorker?.department || "Refining Unit B"} - Badge Scan Station`,
                 shift: targetWorker?.shift || "Morning",
-                duration: `${selectedTime} exposure scan (${temperature}°C, ${humidity}% RH)`,
+                duration: `${selectedTime} exposure scan (${env.T}°C, ${env.RH}% RH)`,
+                temperature: env.T,
+                humidity: env.RH,
+                rawPpm,
+                tempFactor: env.fT,
+                humidityFactor: env.fH,
                 concentration: `${exactPpm} ppm (${matchResult.detectedColor})`,
                 dose: newTotalDose,
+                doseIncrement,
                 status: newTotalDose >= 10 || matchResult.isGrey || matchResult.isBlack ? "Critical" : newTotalDose >= 7 ? "Review" : "Normal",
-                notes: `Calibrated using adjacent 7-block reference strip + empirical ${selectedTime} dataset. Detected tone: ${matchResult.detectedColor}.`
+                notes: `Environmental compensation: T=${env.T}°C (FT=${env.fT}×), RH=${env.RH}% (FH=${env.fH}×), Net=${env.fEnv}×. Raw=${rawPpm} ppm → Corrected=${exactPpm} ppm.`
             };
             saveLogs([newLogEntry, ...existingLogs]);
 
             // Step 8: Update state for UI display
             setScanResult({
+                rawPpm,
                 exactPpm,
                 doseIncrement,
                 newTotalDose,
+                envFactors: env,
+                fT: env.fT,
+                fH: env.fH,
+                fEnv: env.fEnv,
+                temperature: env.T,
+                humidity: env.RH,
                 assignedWorkerName: assignedName,
                 sampleRaw,
                 sampleCorrected,
@@ -1140,7 +1201,7 @@ function ScanBadge() {
             });
 
             setSaveSuccessMsg(
-                `✓ Calibration complete! Detected ${matchResult.detectedColor} at ${exactPpm} ppm recorded for ${assignedName} (${badgeId}) under ${selectedTime} exposure curve. Cumulative dose: ${newTotalDose} ppm·hr.`
+                `✓ Calibration complete! Raw optical ${rawPpm} ppm corrected to ${exactPpm} ppm (FT=${env.fT}×, FH=${env.fH}×) for ${assignedName} (${badgeId}) under ${selectedTime} exposure curve. Cumulative dose: ${newTotalDose} ppm·hr.`
             );
         } catch (err) {
             setErrorMsg(err.message);
@@ -1193,32 +1254,71 @@ function ScanBadge() {
                         )}
                     </div>
 
-                    {/* Temperature (°C) */}
+                    {/* Temperature (°C) with Live FT Badge */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                            Temperature (°C)
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                                Temperature (°C)
+                            </label>
+                            <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                liveEnv.fT > 1.05 ? "bg-amber-500/20 text-amber-300 border-amber-500/30" :
+                                liveEnv.fT < 0.95 ? "bg-sky-500/20 text-sky-300 border-sky-500/30" :
+                                "bg-slate-800 text-slate-300 border-slate-700"
+                            }`}>
+                                F_T: {liveEnv.fT}×
+                            </span>
+                        </div>
                         <input
                             type="number"
+                            step="0.5"
                             value={temperature}
                             onChange={(e) => setTemperature(e.target.value)}
-                            placeholder="32"
+                            placeholder="27.5"
                             className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
                         />
+                        <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
+                            <span>Ref: 27.5 °C (α_T = 0.03)</span>
+                            <span className="font-mono">F_T = 1 + 0.03 × (27.5 - T)</span>
+                        </div>
                     </div>
 
-                    {/* Relative Humidity (%) */}
+                    {/* Relative Humidity (%) with Live FH Badge */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                            Relative Humidity (%)
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-semibold text-slate-400">
+                                Relative Humidity (%)
+                            </label>
+                            <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                liveEnv.fH > 1.05 ? "bg-amber-500/20 text-amber-300 border-amber-500/30" :
+                                liveEnv.fH < 0.95 ? "bg-sky-500/20 text-sky-300 border-sky-500/30" :
+                                "bg-slate-800 text-slate-300 border-slate-700"
+                            }`}>
+                                F_H: {liveEnv.fH}×
+                            </span>
+                        </div>
                         <input
                             type="number"
+                            step="1"
                             value={humidity}
                             onChange={(e) => setHumidity(e.target.value)}
-                            placeholder="64"
+                            placeholder="62.5"
                             className="w-full bg-[#0d1527] border border-slate-800 rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-sky-500 transition"
                         />
+                        <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
+                            <span>Ref: 62.5 % RH (α_H = 0.010)</span>
+                            <span className="font-mono">F_H = 1 + 0.010 × (62.5 - RH)</span>
+                        </div>
+                    </div>
+
+                    {/* Combined Environmental Factor Summary Badge */}
+                    <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                            <SlidersHorizontal size={14} className="text-sky-400" />
+                            <span>Net Environmental Multiplier:</span>
+                        </div>
+                        <div className="font-mono font-bold text-sky-300">
+                            F_T ({liveEnv.fT}×) × F_H ({liveEnv.fH}×) = <span className="text-amber-400 text-sm">{liveEnv.fEnv}×</span>
+                        </div>
                     </div>
 
                     {/* Analyze Badge Button */}
@@ -1558,7 +1658,7 @@ function ScanBadge() {
                             </div>
 
                             {/* Detected Color and Exact PPM */}
-                            <div className="flex items-baseline gap-3 mt-1">
+                            <div className="flex flex-wrap items-baseline gap-3 mt-1">
                                 <div className="text-5xl font-black text-white font-mono">
                                     {scanResult.exactPpm} <span className="text-2xl font-normal text-sky-300">ppm</span>
                                 </div>
@@ -1571,11 +1671,17 @@ function ScanBadge() {
                                 }`}>
                                     Detected Color: {scanResult.detectedColor}
                                 </span>
+                                <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                                    Env Multiplier: {scanResult.fEnv}× (T: {scanResult.temperature}°C, RH: {scanResult.humidity}%)
+                                </span>
                             </div>
 
                             <div className="text-xs text-slate-400 mt-2 space-y-1">
                                 <div>
                                     Badge: <span className="font-mono text-sky-300 font-semibold">{badgeId}</span> · Worker: <span className="text-white font-medium">{scanResult.assignedWorkerName}</span>
+                                </div>
+                                <div>
+                                    Raw Optical: <span className="font-mono text-slate-300 font-bold">{scanResult.rawPpm} ppm</span> · Env Corrected: <span className="font-mono text-sky-400 font-bold">{scanResult.exactPpm} ppm</span>
                                 </div>
                                 <div>
                                     Exposure Curve: <strong className="text-sky-400 font-bold">{scanResult.selectedTime} empirical dataset</strong> · Matched Tier: <strong className="text-white font-bold">{scanResult.nearestTier.label}</strong>
@@ -1682,6 +1788,84 @@ function ScanBadge() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Environmental Correction Breakdown: Temperature (F_T) & Humidity (F_H) */}
+                    <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-5 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <SlidersHorizontal size={16} className="text-amber-400" />
+                                <h3 className="text-sm font-bold text-white">
+                                    Environmental Correction Factors (Lead Acetate Arrhenius Kinetics)
+                                </h3>
+                            </div>
+                            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-sky-950 text-sky-300 border border-sky-800 font-semibold self-start sm:self-auto">
+                                Net Multiplier: {scanResult.fEnv}×
+                            </span>
+                        </div>
+
+                        {/* 4-Column Step-by-Step Calculation Breakdown */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {/* Step 1: Raw Optical Reading */}
+                            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-1">
+                                <div className="text-[11px] text-slate-400 font-medium">1. Raw Optical PPM</div>
+                                <div className="text-xl font-bold font-mono text-slate-200">
+                                    {scanResult.rawPpm} <span className="text-xs font-normal text-slate-400">ppm</span>
+                                </div>
+                                <div className="text-[10px] text-slate-500">
+                                    Uncorrected empirical curve reading
+                                </div>
+                            </div>
+
+                            {/* Step 2: Temperature Correction F_T */}
+                            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-1">
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-400 font-medium">2. Temperature Factor (F_T)</span>
+                                    <span className="font-mono font-bold text-amber-400">{scanResult.fT}×</span>
+                                </div>
+                                <div className="text-xs font-mono text-slate-300">
+                                    T = {scanResult.temperature} °C <span className="text-[10px] text-slate-500">(Ref: 27.5 °C)</span>
+                                </div>
+                                <div className="text-[10px] font-mono text-slate-400">
+                                    1 + 0.03 × (27.5 - {scanResult.temperature})
+                                </div>
+                            </div>
+
+                            {/* Step 3: Humidity Correction F_H */}
+                            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-1">
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-400 font-medium">3. Humidity Factor (F_H)</span>
+                                    <span className="font-mono font-bold text-sky-400">{scanResult.fH}×</span>
+                                </div>
+                                <div className="text-xs font-mono text-slate-300">
+                                    RH = {scanResult.humidity} % <span className="text-[10px] text-slate-500">(Ref: 62.5 %)</span>
+                                </div>
+                                <div className="text-[10px] font-mono text-slate-400">
+                                    1 + 0.010 × (62.5 - {scanResult.humidity})
+                                </div>
+                            </div>
+
+                            {/* Step 4: Environmentally Corrected Exposure */}
+                            <div className="bg-sky-950/40 border border-sky-700/60 rounded-lg p-3 space-y-1">
+                                <div className="text-[11px] text-sky-300 font-medium">4. Corrected Exposure</div>
+                                <div className="text-xl font-bold font-mono text-white">
+                                    {scanResult.exactPpm} <span className="text-xs font-normal text-sky-300">ppm</span>
+                                </div>
+                                <div className="text-[10px] font-mono text-sky-200">
+                                    {scanResult.rawPpm} × {scanResult.fT} × {scanResult.fH}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Scientific Methodology / Presentation Rationale (From Image 5) */}
+                        <div className="p-3 bg-slate-900/90 rounded-lg border border-slate-800/80 text-xs text-slate-300 space-y-1">
+                            <div className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles size={13} /> Scientific Methodology (Reaction Kinetics Model)
+                            </div>
+                            <p className="text-slate-400 italic text-[11px] leading-relaxed">
+                                "We modelled the temperature and humidity effects using linear correction factors derived from the known kinetics of the lead acetate–H₂S reaction. Reference conditions were taken as 27.5 °C and 62.5 % RH. The coefficients α_T = 0.03 and α_H = 0.010 were chosen based on typical sensitivity reported for lead acetate papers and adjusted for the range of our laboratory tests."
+                            </p>
                         </div>
                     </div>
 
@@ -1837,5 +2021,6 @@ function ScanBadge() {
         </div>
     );
 }
+
 
 export default ScanBadge;

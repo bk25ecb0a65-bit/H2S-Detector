@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "6aa643daa1cf0dcfa868f4ed",
+    "alertId": "ALT-7397",
+    "scanId": "EXP-TEST-001",
+    "workerId": "W-101",
+    "workerName": "Ravi Kumar",
+    "badge": "H2S-00431",
+    "alertType": "GREY_PBS_DETECTED",
+    "ppmMeasured": 10.4,
+    "cumulativeDose": 14.6,
+    "timestamp": "2026-09-13 12:15",
+    "acknowledged": true,
+    "actionTaken": "Verified and resolved in automated test.",
+    "createdAt": "2026-09-13T06:34:02.491Z",
+    "updatedAt": "2026-09-13T06:34:02.520Z",
+    "__v": 0
+  }
+]

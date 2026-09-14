@@ -46,13 +46,6 @@ function Dashboard() {
         return calculateBadgeStats(workers);
     }, [workers]);
 
-    // Calculate today's scans count from logs
-    const todayScansCount = useMemo(() => {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const count = logs.filter(log => log.timestamp && log.timestamp.startsWith(todayStr)).length;
-        return count > 0 ? count : logs.length;
-    }, [logs]);
-
     return (
         <div className="space-y-6">
             {/* Header with Title & Quick Actions */}
@@ -83,7 +76,7 @@ function Dashboard() {
             </div>
 
             {/* Dynamic KPI Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <StatCard
                     title="Total Workers"
                     value={stats.totalWorkers}
@@ -109,15 +102,6 @@ function Dashboard() {
                     icon={<ShieldCheck className="text-emerald-400" size={24} />}
                     onClick={() => navigate("/workers")}
                     badge={stats.atRiskWorkers > 0 ? `${stats.atRiskWorkers} At Risk` : "All Safe"}
-                />
-
-                <StatCard
-                    title="Today's Scans"
-                    value={todayScansCount}
-                    description="Dosimeter exposure measurements"
-                    icon={<ScanLine className="text-indigo-400" size={24} />}
-                    onClick={() => navigate("/exposure")}
-                    badge="Logged"
                 />
             </div>
 
